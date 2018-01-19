@@ -1,1 +1,4 @@
 *.pyc
+output/
+.idea/
+*.txt
