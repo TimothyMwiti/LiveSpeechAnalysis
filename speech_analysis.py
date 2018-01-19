@@ -1,5 +1,9 @@
 # watson speech_to_text service
 from watson_developer_cloud import SpeechToTextV1
+
+
+# corpus creation
+
 from nltk.corpus import stopwords
 
 
@@ -9,14 +13,15 @@ from nltk.corpus import stopwords
 
 def speech_2_text(file_name):
 	speech_to_text = SpeechToTextV1(
-		username='',
-		password='',
+		username='username',
+		password='password',
 		x_watson_learning_opt_out=False
 	)
 	speech_to_text.get_model('en-US_BroadbandModel')
 
 	with open(file_name, 'rb') as audio_file:
 		results = speech_to_text.recognize(
+
 			audio_file,
 			content_type='audio/wav',
 			timestamps=True,
@@ -46,7 +51,7 @@ def hits_recorder(text, corpus, hits_dict):
 	for word in text.split():
 		if word in corpus:
 			if word in hits_dict:
-				hits_dict[word] += 1;
+				hits_dict[word] += 1
 			else:
-				hits_dict[word] = 1;
+				hits_dict[word] = 1
 	return hits_dict

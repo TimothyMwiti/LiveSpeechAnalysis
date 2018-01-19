@@ -3,7 +3,9 @@ import wave
 
 # Pyaudio Variables
 from Queue import *
-from heavy_speech_2_text import translate_speech_to_text
+
+# Pyaudio Variables
+
 import math
 import audioop
 from collections import deque
@@ -78,13 +80,16 @@ class SpeechDetector:
 		print "* Listening mic. "
 		audio2send = []
 		cur_data = ''
+
 		rel = self.RATE/self.CHUNK
 		slid_win = deque(maxlen=self.SILENCE_LIMIT * rel)
 		# Prepend audio from 0.5 seconds before noise was detected
 		prev_audio = deque(maxlen=self.PREV_AUDIO * rel)
 		started = False
 		n = num_phrases
+
 		response = []
+
 
 		while num_phrases == -1 or n > 0:
 			cur_data = stream.read(self.CHUNK)
