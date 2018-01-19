@@ -280,6 +280,7 @@ def check_credentials(credentials):
         raise argparse.ArgumentTypeError(
             '"%s" is not a valid format for the credentials ' % credentials)
 
+
 def translate_speech_to_text():
     # parse command line parameters
     parser = argparse.ArgumentParser(
@@ -289,7 +290,7 @@ def translate_speech_to_text():
         '-credentials', action='store', dest='credentials',
         help="Basic Authentication credentials in the form 'username:password'",
         required=False, type=check_credentials,
-        default=None)
+        default='')
     parser.add_argument(
         '-in', action='store', dest='fileInput', default='./recordings.txt',
         help='text file containing audio files')
@@ -389,3 +390,4 @@ def translate_speech_to_text():
     f.close()
     fmt = "successful sessions: {} ({} errors) ({} empty hypotheses)"
     print(fmt.format(successful, len(summary) - successful, emptyHypotheses))
+

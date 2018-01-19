@@ -1,7 +1,9 @@
 # watson speech_to_text service
 from watson_developer_cloud import SpeechToTextV1
 
+
 # corpus creation
+
 from nltk.corpus import stopwords
 
 
@@ -19,7 +21,10 @@ def speech_2_text(file_name):
 
 	with open(file_name, 'rb') as audio_file:
 		results = speech_to_text.recognize(
-			audio_file, content_type='audio/wav', timestamps=True,
+
+			audio_file,
+			content_type='audio/wav',
+			timestamps=True,
 			word_confidence=True)
 		first_array = results["results"]
 		transcript = ''

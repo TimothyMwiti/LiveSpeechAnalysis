@@ -5,7 +5,7 @@ import math
 
 
 def split_audio(audio_name, save_location):
-	audio_length = get_audio_length()
+	audio_length = get_audio_length(audio_name)
 	full_audio = AudioSegment.from_wav(audio_name)
 
 	for i in range(0, int(math.ceil(audio_length/10))):
