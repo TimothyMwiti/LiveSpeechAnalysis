@@ -23,15 +23,15 @@
 import json                        # json
 import threading                   # multi threading
 import os                          # for listing directories
-#from multiprocessing 
-import Queue                       # queue used for thread syncronization
+# from multiprocessing
+import Queue                       # queue used for thread synchronization
 import sys                         # system calls
 import argparse                    # for parsing arguments
 import base64                      # necessary to encode in base64
 #                                  # according to the RFC2045 standard
 import requests                    # python HTTP requests library
 
-#audio recording
+# audio recording
 import pyaudio
 import wave
 from audio_splitter import split_audio, get_audio_length
@@ -380,7 +380,6 @@ def translate_speech_to_text():
     f = open(fileHypotheses, "w")
     successful = 0
     emptyHypotheses = 0
-
 
     print 'printing summary'
     print summary
