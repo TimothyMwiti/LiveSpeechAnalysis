@@ -12,12 +12,13 @@ def split_audio(audio_name, save_location):
 		audio = full_audio[i*10000:(i+1)*10000]
 		audio.export(out_f = save_location + "audio" + str(i+1) + ".wav", format = "wav")
 
+
 def get_audio_length(audio_name):
 	with contextlib.closing(wave.open(audio_name,'r')) as f:
-	    frames = f.getnframes()
-	    print frames
-	    rate = f.getframerate()
-	    print rate
-	    duration = frames / float(rate)
-	    print(duration)
+		frames = f.getnframes()
+		print frames
+		rate = f.getframerate()
+		print rate
+		duration = frames / float(rate)
+		print(duration)
 	return duration

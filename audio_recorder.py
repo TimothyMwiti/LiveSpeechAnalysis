@@ -1,10 +1,10 @@
-#audio recording
 import pyaudio
 import wave
 
 from heavy_speech_2_text import translate_speech_to_text
 from Queue import *
-#Pyaudio Variables
+
+# Pyaudio Variables
 
 import math
 import audioop
@@ -24,31 +24,31 @@ class SpeechDetector:
 		self.PREV_AUDIO = 0.5
 		self.THRESHOLD = 2500
 
-
 	def setup_mic(self, num_samples=50):
-	        """ Gets average audio intensity of your mic sound. You can use it to get
-	            average intensities while you're talking and/or silent. The average
-	            is the avg of the .2 of the largest intensities recorded.
-	        """
+		"""
+		Gets average audio intensity of your mic sound. You can use it to get
+		average intensities while you're talking and/or silent. The average
+		is the avg of the .2 of the largest intensities recorded.
+		"""
+		print "Getting intensity values from mic."
+		p = pyaudio.PyAudio()
+		stream = p.open(
+			format=self.FORMAT,
+			channels=self.CHANNELS,
+			rate=self.RATE,
+			input=True,
+			frames_per_buffer=self.CHUNK)
 
-	        print "Getting intensity values from mic."
-	        p = pyaudio.PyAudio()
-	        stream = p.open(format=self.FORMAT,
-	                        channels=self.CHANNELS,
-	                        rate=self.RATE,
-	                        input=True,
-	                        frames_per_buffer=self.CHUNK)
-
-	        values = [math.sqrt(abs(audioop.avg(stream.read(self.CHUNK), 4)))
-	                  for x in range(num_samples)]
-	        values = sorted(values, reverse=True)
-	        r = sum(values[:int(num_samples * 0.2)]) / int(num_samples * 0.2)
-	        print " Finished " 
-	        print " Average audio intensity is ", r
-	        stream.close()
-	        p.terminate()
-	        return r
-
+		values = [
+			math.sqrt(abs(audioop.avg(stream.read(self.CHUNK), 4)))
+			for x in range(num_samples)]
+		values = sorted(values, reverse=True)
+		r = sum(values[:int(num_samples * 0.2)]) / int(num_samples * 0.2)
+		print " Finished "
+		print " Average audio intensity is ", r
+		stream.close()
+		p.terminate()
+		return r
 
 	def save_speech(self, data, p):
 		recording_name = str(int(time.time()))
@@ -63,60 +63,55 @@ class SpeechDetector:
 		wf.close()
 		return filename + '.wav'
 
-
 	def record_to_file(self, recording_name):
-		fileWriter = open('recordings.txt', 'a')
-		fileWriter.write(recording_name + "\n")
-
+		file_writer = open('recordings.txt', 'a')
+		file_writer.write(recording_name + "\n")
 
 	def run(self, num_phrases=-1):
+		# Open stream
+		p = pyaudio.PyAudio()
 
-	    #Open stream
-	    p = pyaudio.PyAudio()
+		stream = p.open(
+			format=self.FORMAT,
+			channels=self.CHANNELS,
+			rate=self.RATE,
+			input=True,
+			frames_per_buffer=self.CHUNK)
+		print "* Listening mic. "
+		audio2send = []
+		rel = self.RATE/self.CHUNK
+		slid_win = deque(maxlen=self.SILENCE_LIMIT * rel)
+		# Prepend audio from 0.5 seconds before noise was detected
+		prev_audio = deque(maxlen=self.PREV_AUDIO * rel)
+		started = False
+		n = num_phrases
+		while num_phrases == -1 or n > 0:
+			cur_data = stream.read(self.CHUNK)
+			slid_win.append(math.sqrt(abs(audioop.avg(cur_data, 4))))
+			# print slid_win[-1]
+			if sum([x > self.THRESHOLD for x in slid_win]) > 0:
+				if not started:
+					print "Starting record of phrase"
+					started = True
+				audio2send.append(cur_data)
+			elif started is True:
+				print "Finished"
+				# The limit was reached, finish capture and deliver.
+				filename = self.save_speech(list(prev_audio) + audio2send, p)
+				# Reset all
+				started = False
+				slid_win = deque(maxlen=self.SILENCE_LIMIT * rel)
+				prev_audio = deque(maxlen=0.5 * rel)
+				audio2send = []
+				n -= 1
+				print "Listening ..."
+			else:
+				prev_audio.append(cur_data)
+		print "* Done recording"
+		stream.close()
+		p.terminate()
 
-	    stream = p.open(format=self.FORMAT,
-	                    channels=self.CHANNELS,
-	                    rate=self.RATE,
-	                    input=True,
-	                    frames_per_buffer=self.CHUNK)
 
-	    print "* Listening mic. "
-	    audio2send = []
-	    cur_data = ''  # current chunk  of audio data
-	    rel = self.RATE/self.CHUNK
-	    slid_win = deque(maxlen=self.SILENCE_LIMIT * rel)
-	    #Prepend audio from 0.5 seconds before noise was detected
-	    prev_audio = deque(maxlen=self.PREV_AUDIO * rel) 
-	    started = False
-	    n = num_phrases
-	    response = []
-
-	    while (num_phrases == -1 or n > 0):
-	        cur_data = stream.read(self.CHUNK)
-	        slid_win.append(math.sqrt(abs(audioop.avg(cur_data, 4))))
-	        #print slid_win[-1]
-	        if(sum([x > self.THRESHOLD for x in slid_win]) > 0):
-	            if(not started):
-	                print "Starting record of phrase"
-	                started = True
-	            audio2send.append(cur_data)
-	        elif (started is True):
-	            print "Finished"
-	            # The limit was reached, finish capture and deliver.
-	            filename = self.save_speech(list(prev_audio) + audio2send, p)
-	            # Reset all
-	            started = False
-	            slid_win = deque(maxlen=self.SILENCE_LIMIT * rel)
-	            prev_audio = deque(maxlen=0.5 * rel) 
-	            audio2send = []
-	            n -= 1
-	            print "Listening ..."
-	        else:
-	            prev_audio.append(cur_data)
-
-	    print "* Done recording"
-	    stream.close()
-	    p.terminate()
 if __name__ == "__main__":
 	sd = SpeechDetector()
 	sd.setup_mic()

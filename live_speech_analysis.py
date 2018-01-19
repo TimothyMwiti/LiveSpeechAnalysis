@@ -23,6 +23,6 @@ except KeyboardInterrupt:
 
 print HITS_DICTIONARY
 fileReader.close()
-rewriter = open("recordings.txt", "w")
-rewriter.close()
+rewrite = open("recordings.txt", "w")
+rewrite.close()
 
