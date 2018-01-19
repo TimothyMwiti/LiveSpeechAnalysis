@@ -2,3 +2,5 @@
 output/
 .idea/
 *.txt
+*.mp3
+*.wav

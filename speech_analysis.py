@@ -1,8 +1,5 @@
 # watson speech_to_text service
 from watson_developer_cloud import SpeechToTextV1
-import json
-import unicodedata
-# corpus creation
 from nltk.corpus import stopwords
 
 
@@ -12,8 +9,8 @@ from nltk.corpus import stopwords
 
 def speech_2_text(file_name):
 	speech_to_text = SpeechToTextV1(
-		username='username',
-		password='password',
+		username='',
+		password='',
 		x_watson_learning_opt_out=False
 	)
 	speech_to_text.get_model('en-US_BroadbandModel')
