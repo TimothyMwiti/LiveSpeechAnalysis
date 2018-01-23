@@ -1,15 +1,16 @@
 import pyaudio
 import wave
-
-# Pyaudio Variables
-from Queue import *
-
-# Pyaudio Variables
-
 import math
 import audioop
 from collections import deque
 import time
+
+'''
+Adapted by Timothy Mwiti 2017
+
+SpeechDetector allows the recording of a .wav file from the microphone. 
+The recorded audio file is stored in the output folder.
+'''
 
 
 class SpeechDetector:
@@ -25,11 +26,7 @@ class SpeechDetector:
 		self.THRESHOLD = 2500
 
 	def setup_mic(self, num_samples=50):
-		"""
-		Gets average audio intensity of your mic sound. You can use it to get
-		average intensities while you're talking and/or silent. The average
-		is the avg of the .2 of the largest intensities recorded.
-		"""
+		# Gets average audio intensity of your mic sound.
 		print "Getting intensity values from mic."
 		p = pyaudio.PyAudio()
 		stream = p.open(
@@ -38,14 +35,13 @@ class SpeechDetector:
 			rate=self.RATE,
 			input=True,
 			frames_per_buffer=self.CHUNK)
-
 		values = [
 			math.sqrt(abs(audioop.avg(stream.read(self.CHUNK), 4)))
 			for x in range(num_samples)]
 		values = sorted(values, reverse=True)
 		r = sum(values[:int(num_samples * 0.2)]) / int(num_samples * 0.2)
 		print " Finished "
-		print " Average audio intensity is ", r
+		# print " Average audio intensity is ", r
 		stream.close()
 		p.terminate()
 		return r
@@ -61,16 +57,14 @@ class SpeechDetector:
 		wf.setframerate(self.RATE)
 		wf.writeframes(data)
 		wf.close()
-		return filename + '.wav'
+		# return filename + '.wav'
 
 	def record_to_file(self, recording_name):
 		file_writer = open('recordings.txt', 'a')
 		file_writer.write(recording_name + "\n")
 
 	def run(self, num_phrases=-1):
-		# Open stream
 		p = pyaudio.PyAudio()
-
 		stream = p.open(
 			format=self.FORMAT,
 			channels=self.CHANNELS,
@@ -87,10 +81,7 @@ class SpeechDetector:
 		prev_audio = deque(maxlen=self.PREV_AUDIO * rel)
 		started = False
 		n = num_phrases
-
 		response = []
-
-
 		while num_phrases == -1 or n > 0:
 			cur_data = stream.read(self.CHUNK)
 			slid_win.append(math.sqrt(abs(audioop.avg(cur_data, 4))))
@@ -103,7 +94,7 @@ class SpeechDetector:
 			elif started is True:
 				print "Finished"
 				# The limit was reached, finish capture and deliver.
-				filename = self.save_speech(list(prev_audio) + audio2send, p)
+				self.save_speech(list(prev_audio) + audio2send, p)
 				# Reset all
 				started = False
 				slid_win = deque(maxlen=self.SILENCE_LIMIT * rel)

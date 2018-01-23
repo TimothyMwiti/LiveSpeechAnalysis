@@ -2,6 +2,15 @@ from speech_analysis import speech_2_text, create_corpus, hits_recorder
 import os
 import time
 
+'''
+Written by Timothy Mwiti, 2017
+
+Conducts live speech analysis.
+
+Required inputs: A text file that the live speech should be compared to.
+'''
+
+
 CORPUS = create_corpus("hypotheses.txt")
 print "finished creating corpus"
 
