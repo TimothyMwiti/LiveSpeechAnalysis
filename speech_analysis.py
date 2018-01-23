@@ -1,14 +1,14 @@
-# watson speech_to_text service
 from watson_developer_cloud import SpeechToTextV1
-
-
-# corpus creation
-
 from nltk.corpus import stopwords
 
+'''
+Written By Timothy Mwiti 2017
 
-# ON HOLD NEED TO FIGURE OUT A FASTER WAY TO TRANSCRIBE AUDIO
-# takes an audio file and transcribes it to an text file
+speech_2_text: convert a .wav and returns a transcript
+create_corpus: Creates a corpus of words in a text file. (NB: Gets rid of stop words in the file)
+hits_recorder: Updates a dictionary fo words with a count of number of utterances of the word from a 
+				piece of text.
+'''
 
 
 def speech_2_text(file_name):
@@ -21,7 +21,6 @@ def speech_2_text(file_name):
 
 	with open(file_name, 'rb') as audio_file:
 		results = speech_to_text.recognize(
-
 			audio_file,
 			content_type='audio/wav',
 			timestamps=True,
