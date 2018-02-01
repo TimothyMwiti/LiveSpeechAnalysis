@@ -18,6 +18,9 @@ HITS_DICTIONARY = {}
 
 fileReader = open("recordings.txt", "r")
 running = True
+
+count = 0
+
 try:
 	while running:
 		line = fileReader.readline().strip()
@@ -28,10 +31,15 @@ try:
 		else:
 			pass
 		time.sleep(1)
+		count += 1
+		if count == 10:
+			print 'These are the current statics for utterances thus far: '
+			print HITS_DICTIONARY
+			count = 0
 except KeyboardInterrupt:
 	pass
 
-
+print 'Final count for utterances: '
 print HITS_DICTIONARY
 fileReader.close()
 rewrite = open("recordings.txt", "w")
