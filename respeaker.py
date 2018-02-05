@@ -19,13 +19,12 @@ MIC_DISTANCE_4 = 0.08127
 MAX_TDOA_4 = MIC_DISTANCE_4 / float(SOUND_SPEED)
 
 
-
 class MicArray(object):
-	def __init__(self):
+	def __init__(self, rate=16000, channels=4, chunk_size=None):
 		self.FORMAT = pyaudio.paInt16
-		self.CHANNELS = 4
-		self.RATE = 16000
-		self.CHUNK = 1024
+		self.CHANNELS = channels
+		self.RATE = rate
+		self.CHUNK = chunk_size if chunk_size else rate/100
 		self.RECORD_SECONDS = 3.5
 		self.pyaudio_instance = pyaudio.Pyaudio()
 		self.SILENCE_LIMIT = 5
@@ -47,28 +46,23 @@ class MicArray(object):
 		if device_index is None:
 			raise Exception('can not find input device with {} channel(s)'.format(self.CHANNELS))
 
-		# self.stream = self.pyaudio_instance.open(
-		# input=True,
-		# start=False,
-		# format=pyaudio.paInt16,
-		# channels=self.CHANNELS,
-		# rate=int(self.RATE),
-		# frames_per_buffer=int(self.CHUNK),
-		# stream_callback=self._callback,
-		# input_device_index=device_index,
-		# )
+		self.stream = self.pyaudio_instance.open(
+			input=True,
+			start=False,
+			format=pyaudio.paInt16,
+			channels=self.CHANNELS,
+			rate=int(self.RATE),
+			frames_per_buffer=int(self.CHUNK),
+			stream_callback=self._callback,
+			input_device_index=device_index,
+		)
 
 
 	def setup_mic(self, num_samples=50):
 		# Gets average audio intensity of your mic sound.
 		print "Getting intensity values from mic."
-		p = pyaudio.PyAudio()
-		stream = p.open(
-			format=self.FORMAT,
-			channels=self.CHANNELS,
-			rate=self.RATE,
-			input=True,
-			frames_per_buffer=self.CHUNK)
+		# p = pyaudio.PyAudio()
+		stream = self.stream
 		values = [
 			math.sqrt(abs(audioop.avg(stream.read(self.CHUNK), 4)))
 			for x in range(num_samples)]
@@ -77,8 +71,12 @@ class MicArray(object):
 		print " Finished "
 		print " Average audio intensity is ", r
 		stream.close()
-		p.terminate()
+		# p.terminate()
 		return r
+
+	def record_to_file(self, recording_name):
+		file_writer = open('recordings.txt', 'a')
+		file_writer.write(recording_name + "\n")
 
 	def save_speech(self, data, p):
 		recording_name = str(int(time.time()))
@@ -92,9 +90,9 @@ class MicArray(object):
 		wf.writeframes(data)
 		wf.close()
 
-	# def _callback(self, in_data, frame_count, time_info, status):
-	#    self.queue.put(in_data)
-	#    return None, pyaudio.paContinue
+	def _callback(self, in_data, frame_count, time_info, status):
+		self.queue.put(in_data)
+		return None, pyaudio.paContinue
 
 	def start(self):
 		self.queue.queue.clear()
@@ -181,53 +179,53 @@ class MicArray(object):
 		return best_guess
 
 
-def run(self, num_phrases=-1):
-	p = pyaudio.PyAudio()
-	stream = p.open(
-		format=self.FORMAT,
-		channels=self.CHANNELS,
-		rate=self.RATE,
-		input=True,
-		frames_per_buffer=self.CHUNK)
-	print "* Listening mic. "
-	audio2send = []
-	cur_data = ''
+	def run(self, num_phrases=-1):
+		p = pyaudio.PyAudio()
+		stream = p.open(
+			format=self.FORMAT,
+			channels=self.CHANNELS,
+			rate=self.RATE,
+			input=True,
+			frames_per_buffer=self.CHUNK)
+		print "* Listening mic. "
+		audio2send = []
+		cur_data = ''
 
-	rel = self.RATE / self.CHUNK
-	slid_win = deque(maxlen=self.SILENCE_LIMIT * rel)
-	# Prepend audio from 0.5 seconds before noise was detected
-	prev_audio = deque(maxlen=self.PREV_AUDIO * rel)
-	started = False
-	n = num_phrases
-	response = []
-	while num_phrases == -1 or n > 0:
-		cur_data = stream.read(self.CHUNK)
-		slid_win.append(math.sqrt(abs(audioop.avg(cur_data, 4))))
-		# print slid_win[-1]
-		if sum([x > self.THRESHOLD for x in slid_win]) > 0:
-			if not started:
-				with MicArray(16000, 4, 16000/4) as mic:
-					direction = mic.get_direction(mic.read_chunks())
-					print int(direction)
-				print "Starting record of phrase"
-				started = True
-			audio2send.append(cur_data)
-		elif started is True:
-			print "Finished"
-			# The limit was reached, finish capture and deliver.
-			self.save_speech(list(prev_audio) + audio2send, p)
-			# Reset all
-			started = False
-			slid_win = deque(maxlen=self.SILENCE_LIMIT * rel)
-			prev_audio = deque(maxlen=0.5 * rel)
-			audio2send = []
-			n -= 1
-			print "Listening ..."
-		else:
-			prev_audio.append(cur_data)
-	print "* Done recording"
-	stream.close()
-	p.terminate()
+		rel = self.RATE / self.CHUNK
+		slid_win = deque(maxlen=self.SILENCE_LIMIT * rel)
+		# Prepend audio from 0.5 seconds before noise was detected
+		prev_audio = deque(maxlen=self.PREV_AUDIO * rel)
+		started = False
+		n = num_phrases
+		response = []
+		while num_phrases == -1 or n > 0:
+			cur_data = stream.read(self.CHUNK)
+			slid_win.append(math.sqrt(abs(audioop.avg(cur_data, 4))))
+			# print slid_win[-1]
+			if sum([x > self.THRESHOLD for x in slid_win]) > 0:
+				if not started:
+					with MicArray(16000, 4, 16000/4) as mic:
+						direction = mic.get_direction(mic.read_chunks())
+						print int(direction)
+					print "Starting record of phrase"
+					started = True
+				audio2send.append(cur_data)
+			elif started is True:
+				print "Finished"
+				# The limit was reached, finish capture and deliver.
+				self.save_speech(list(prev_audio) + audio2send, p)
+				# Reset all
+				started = False
+				slid_win = deque(maxlen=self.SILENCE_LIMIT * rel)
+				prev_audio = deque(maxlen=0.5 * rel)
+				audio2send = []
+				n -= 1
+				print "Listening ..."
+			else:
+				prev_audio.append(cur_data)
+		print "* Done recording"
+		stream.close()
+		p.terminate()
 
 def test_4mic():
 	import signal
@@ -279,5 +277,3 @@ if __name__ == '__main__':
 	sd = MicArray()
 	sd.setup_mic()
 	sd.run()
-	# setup_mic()
-	# test_4mic()
