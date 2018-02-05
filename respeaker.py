@@ -33,6 +33,34 @@ class MicArray(object):
 		self.queue = Queue.Queue()
 		self.quit_event = threading.Event()
 
+		# device_index = None
+		# for i in range(self.pyaudio_instance.get_device_count()):
+		# 	dev = self.pyaudio_instance.get_device_info_by_index(i)
+		# 	name = dev['name'].encode('utf-8')
+		# 	print(i, name, dev['maxInputChannels'], dev['maxOutputChannels'])
+		# 	if dev['maxInputChannels'] == self.CHANNELS:
+		# 		print('Use {}'.format(name))
+		# 		device_index = i
+		# 		break
+		#
+		# if device_index is None:
+		# 	raise Exception('can not find input device with {} channel(s)'.format(self.CHANNELS))
+
+		# self.stream = self.pyaudio_instance.open(
+		# 	input=True,
+		# 	start=False,
+		# 	format=pyaudio.paInt16,
+		# 	channels=self.CHANNELS,
+		# 	rate=int(self.RATE),
+		# 	frames_per_buffer=int(self.CHUNK),
+		# 	stream_callback=self._callback,
+		# 	input_device_index=device_index,
+		# )
+
+
+	def setup_mic(self, num_samples=50):
+		# Gets average audio intensity of your mic sound.
+		print "Getting intensity values from mic."
 		device_index = None
 		for i in range(self.pyaudio_instance.get_device_count()):
 			dev = self.pyaudio_instance.get_device_info_by_index(i)
@@ -46,23 +74,15 @@ class MicArray(object):
 		if device_index is None:
 			raise Exception('can not find input device with {} channel(s)'.format(self.CHANNELS))
 
-		self.stream = self.pyaudio_instance.open(
-			input=True,
-			start=False,
-			format=pyaudio.paInt16,
-			channels=self.CHANNELS,
-			rate=int(self.RATE),
-			frames_per_buffer=int(self.CHUNK),
-			stream_callback=self._callback,
-			input_device_index=device_index,
+		p = pyaudio.PyAudio()
+		stream = p.open(
+			input = True,
+			format = self.FORMAT,
+			channels = self.CHANNELS,
+			rate = self.RATE,
+			frames_per_buffer = self.CHUNK,
+			input_device_index = device_index,
 		)
-
-
-	def setup_mic(self, num_samples=50):
-		# Gets average audio intensity of your mic sound.
-		print "Getting intensity values from mic."
-		# p = pyaudio.PyAudio()
-		stream = self.stream
 		values = [
 			math.sqrt(abs(audioop.avg(stream.read(self.CHUNK), 4)))
 			for x in range(num_samples)]
@@ -71,7 +91,7 @@ class MicArray(object):
 		print " Finished "
 		print " Average audio intensity is ", r
 		stream.close()
-		# p.terminate()
+		p.terminate()
 		return r
 
 	def record_to_file(self, recording_name):
@@ -181,12 +201,27 @@ class MicArray(object):
 
 	def run(self, num_phrases=-1):
 		p = pyaudio.PyAudio()
+		device_index = None
+		for i in range(self.pyaudio_instance.get_device_count()):
+			dev = self.pyaudio_instance.get_device_info_by_index(i)
+			name = dev['name'].encode('utf-8')
+			# print(i, name, dev['maxInputChannels'], dev['maxOutputChannels'])
+			if dev['maxInputChannels'] == self.CHANNELS:
+				# print('Use {}'.format(name))
+				device_index = i
+				break
+
+		if device_index is None:
+			raise Exception('can not find input device with {} channel(s)'.format(self.CHANNELS))
+
 		stream = p.open(
+			input=True,
 			format=self.FORMAT,
 			channels=self.CHANNELS,
 			rate=self.RATE,
-			input=True,
-			frames_per_buffer=self.CHUNK)
+			frames_per_buffer=self.CHUNK,
+			input_device_index=device_index,
+		)
 		print "* Listening mic. "
 		audio2send = []
 		cur_data = ''
