@@ -8,14 +8,12 @@ import audioop
 import time
 import wave
 from collections import deque
+from pixel import pixels
+
+SOUND_SPEED = 340
 
 
-SOUND_SPEED = 343.2
-
-MIC_DISTANCE_6P1 = 0.064
-MAX_TDOA_6P1 = MIC_DISTANCE_6P1 / float(SOUND_SPEED)
-
-MIC_DISTANCE_4 = 0.08127
+MIC_DISTANCE_4 = 0.081
 MAX_TDOA_4 = MIC_DISTANCE_4 / float(SOUND_SPEED)
 
 
@@ -24,39 +22,13 @@ class MicArray(object):
 		self.FORMAT = pyaudio.paInt16
 		self.CHANNELS = channels
 		self.RATE = rate
-		self.CHUNK = chunk_size if chunk_size else rate/100
+		self.CHUNK = chunk_size if chunk_size else rate/4
 		self.RECORD_SECONDS = 3.5
-		self.pyaudio_instance = pyaudio.Pyaudio()
+		self.pyaudio_instance = pyaudio.PyAudio()
 		self.SILENCE_LIMIT = 5
 		self.PREV_AUDIO = 0.5
-		self.THRESHOLD = 2500
+		self.THRESHOLD = int(self.setup_mic())
 		self.queue = Queue.Queue()
-		self.quit_event = threading.Event()
-
-		# device_index = None
-		# for i in range(self.pyaudio_instance.get_device_count()):
-		# 	dev = self.pyaudio_instance.get_device_info_by_index(i)
-		# 	name = dev['name'].encode('utf-8')
-		# 	print(i, name, dev['maxInputChannels'], dev['maxOutputChannels'])
-		# 	if dev['maxInputChannels'] == self.CHANNELS:
-		# 		print('Use {}'.format(name))
-		# 		device_index = i
-		# 		break
-		#
-		# if device_index is None:
-		# 	raise Exception('can not find input device with {} channel(s)'.format(self.CHANNELS))
-
-		# self.stream = self.pyaudio_instance.open(
-		# 	input=True,
-		# 	start=False,
-		# 	format=pyaudio.paInt16,
-		# 	channels=self.CHANNELS,
-		# 	rate=int(self.RATE),
-		# 	frames_per_buffer=int(self.CHUNK),
-		# 	stream_callback=self._callback,
-		# 	input_device_index=device_index,
-		# )
-
 
 	def setup_mic(self, num_samples=50):
 		# Gets average audio intensity of your mic sound.
@@ -64,6 +36,7 @@ class MicArray(object):
 		device_index = None
 		for i in range(self.pyaudio_instance.get_device_count()):
 			dev = self.pyaudio_instance.get_device_info_by_index(i)
+			print self.pyaudio_instance.get_device_count()
 			name = dev['name'].encode('utf-8')
 			print(i, name, dev['maxInputChannels'], dev['maxOutputChannels'])
 			if dev['maxInputChannels'] == self.CHANNELS:
@@ -76,12 +49,12 @@ class MicArray(object):
 
 		p = pyaudio.PyAudio()
 		stream = p.open(
-			input = True,
-			format = self.FORMAT,
-			channels = self.CHANNELS,
-			rate = self.RATE,
-			frames_per_buffer = self.CHUNK,
-			input_device_index = device_index,
+			input=True,
+			format=self.FORMAT,
+			channels=self.CHANNELS,
+			rate=self.RATE,
+			frames_per_buffer=self.CHUNK,
+			input_device_index=device_index,
 		)
 		values = [
 			math.sqrt(abs(audioop.avg(stream.read(self.CHUNK), 4)))
@@ -104,69 +77,28 @@ class MicArray(object):
 		self.record_to_file(filename + ".wav")
 		data = ''.join(data)
 		wf = wave.open(filename + '.wav', 'wb')
-		wf.setnchannels(1)
+		wf.setnchannels(4)
 		wf.setsampwidth(p.get_sample_size(pyaudio.paInt16))
 		wf.setframerate(self.RATE)
 		wf.writeframes(data)
 		wf.close()
 
-	def _callback(self, in_data, frame_count, time_info, status):
-		self.queue.put(in_data)
-		return None, pyaudio.paContinue
+	# def start(self):
+	# 	self.queue.queue.clear()
+	# 	self.stream.start_stream()
+	#
+	# def __enter__(self):
+	# 	self.start()
+	# 	return self
 
-	def start(self):
-		self.queue.queue.clear()
-		self.stream.start_stream()
-
-
-	def read_chunks(self):
-		self.quit_event.clear()
-		frames = self.queue.get()
-		frames = np.fromstring(frames, dtype='int16')
-		yield frames
-		#while not self.quit_event.is_set():
-		#	frames = self.queue.get()
-		#	if not frames:
-		#		break
-		# 			frames = np.fromstring(frames, dtype='int16')
-		#	yield frames
-
-	def stop(self):
-		self.quit_event.set()
-		self.stream.stop_stream()
-		self.queue.put('')
-
-	def __enter__(self):
-		self.start()
-		return self
-
-	def __exit__(self, type, value, traceback):
-		if value:
-			return False
-		self.stop()
+	# def __exit__(self, type, value, traceback):
+	# if value:
+	# return False
+	# self.stop()
 
 	def get_direction(self, buf):
 		best_guess = None
-		if self.CHANNELS == 8:
-			MIC_GROUP_N = 3
-			MIC_GROUP = [[1, 4], [2, 5], [3, 6]]
-
-			tau = [0] * MIC_GROUP_N
-			theta = [0] * MIC_GROUP_N
-
-			# buf = np.fromstring(buf, dtype='int16')
-			for i, v in enumerate(MIC_GROUP):
-				tau[i], _ = gcc_phat(buf[v[0]::8], buf[v[1]::8], fs=self.RATE, max_tau=MAX_TDOA_6P1, interp=1)
-				theta[i] = math.asin(tau[i] / MAX_TDOA_6P1) * 180 / math.pi
-
-			min_index = np.argmin(np.abs(tau))
-			if (min_index != 0 and theta[min_index - 1] >= 0) or (min_index == 0 and theta[MIC_GROUP_N - 1] < 0):
-				best_guess = (theta[min_index] + 360) % 360
-			else:
-				best_guess = (180 - theta[min_index])
-
-			best_guess = (best_guess + 120 + min_index * 60) % 360
-		elif self.CHANNELS == 4:
+		if self.CHANNELS == 4:
 			MIC_GROUP_N = 2
 			MIC_GROUP = [[0, 2], [1, 3]]
 
@@ -189,7 +121,6 @@ class MicArray(object):
 
 				best_guess = (best_guess + 90 + 180) % 360
 
-
 			best_guess = (-best_guess + 120) % 360
 
 
@@ -198,16 +129,15 @@ class MicArray(object):
 
 		return best_guess
 
-
 	def run(self, num_phrases=-1):
 		p = pyaudio.PyAudio()
 		device_index = None
 		for i in range(self.pyaudio_instance.get_device_count()):
 			dev = self.pyaudio_instance.get_device_info_by_index(i)
 			name = dev['name'].encode('utf-8')
-			# print(i, name, dev['maxInputChannels'], dev['maxOutputChannels'])
+			print(i, name, dev['maxInputChannels'], dev['maxOutputChannels'])
 			if dev['maxInputChannels'] == self.CHANNELS:
-				# print('Use {}'.format(name))
+				print('Use {}'.format(name))
 				device_index = i
 				break
 
@@ -233,23 +163,28 @@ class MicArray(object):
 		started = False
 		n = num_phrases
 		response = []
+		print self.THRESHOLD
 		while num_phrases == -1 or n > 0:
 			cur_data = stream.read(self.CHUNK)
 			slid_win.append(math.sqrt(abs(audioop.avg(cur_data, 4))))
-			# print slid_win[-1]
 			if sum([x > self.THRESHOLD for x in slid_win]) > 0:
 				if not started:
-					with MicArray(16000, 4, 16000/4) as mic:
-						direction = mic.get_direction(mic.read_chunks())
-						print int(direction)
 					print "Starting record of phrase"
 					started = True
+				print len(audio2send)
 				audio2send.append(cur_data)
-			elif started is True:
+			elif started:
 				print "Finished"
 				# The limit was reached, finish capture and deliver.
 				self.save_speech(list(prev_audio) + audio2send, p)
 				# Reset all
+				for i in range(0, len(audio2send)):
+					# print audio2send[i]
+					frames = np.fromstring(audio2send[i], dtype='int16')
+					for x in frames:
+						direction = self.get_direction(x)
+						if direction is not None:
+							print int(direction)
 				started = False
 				slid_win = deque(maxlen=self.SILENCE_LIMIT * rel)
 				prev_audio = deque(maxlen=0.5 * rel)
@@ -262,6 +197,11 @@ class MicArray(object):
 		stream.close()
 		p.terminate()
 
+	def _callback(self, in_data, frame_count, time_info, status):
+		self.queue.put(in_data)
+		return None, pyaudio.paContinue
+
+
 def test_4mic():
 	import signal
 	import time
@@ -273,7 +213,7 @@ def test_4mic():
 		print('Quit')
 
 	signal.signal(signal.SIGINT, signal_handler)
- 
+
 	with MicArray(16000, 4, 16000 / 4)  as mic:
 		for chunk in mic.read_chunks():
 			direction = mic.get_direction(chunk)
@@ -283,32 +223,6 @@ def test_4mic():
 				break
 
 
-def test_8mic():
-	import signal
-	import time
-	from pixel_ring import pixel_ring
-
-	is_quit = threading.Event()
-
-	def signal_handler(sig, num):
-		is_quit.set()
-		print('Quit')
-
-	signal.signal(signal.SIGINT, signal_handler)
- 
-	with MicArray(16000, 8, 16000 / 4)  as mic:
-		for chunk in mic.read_chunks():
-			direction = mic.get_direction(chunk)
-			pixel_ring.set_direction(direction)
-			print(int(direction))
-
-			if is_quit.is_set():
-				break
-
-	pixel_ring.off()
-
-
 if __name__ == '__main__':
 	sd = MicArray()
-	sd.setup_mic()
 	sd.run()
