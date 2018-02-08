@@ -11,10 +11,10 @@ Required inputs: A text file that the live speech should be compared to.
 '''
 
 
-CORPUS = create_corpus("hypotheses.txt")
-print "finished creating corpus"
+#CORPUS = create_corpus("hypotheses.txt")
+#print "finished creating corpus"
 
-HITS_DICTIONARY = {}
+#HITS_DICTIONARY = {}
 
 fileReader = open("recordings.txt", "r")
 running = True
@@ -27,20 +27,21 @@ try:
 		if line != '':
 			transcript = speech_2_text(line)
 			os.remove(line)
-			HITS_DICTIONARY = hits_recorder(transcript, CORPUS, HITS_DICTIONARY)
+			#HITS_DICTIONARY = hits_recorder(transcript, CORPUS, HITS_DICTIONARY)
+			print transcript
 		else:
 			pass
 		time.sleep(1)
 		count += 1
 		if count == 10:
-			print 'These are the current statics for utterances thus far: '
-			print HITS_DICTIONARY
+			#print 'These are the current statics for utterances thus far: '
+			#print HITS_DICTIONARY
 			count = 0
 except KeyboardInterrupt:
 	pass
 
 print 'Final count for utterances: '
-print HITS_DICTIONARY
+#print HITS_DICTIONARY
 fileReader.close()
 rewrite = open("recordings.txt", "w")
 rewrite.close()
