@@ -9,13 +9,14 @@ import time
 import wave
 from collections import deque
 from pixels import pixels
+import csv
+
 
 SOUND_SPEED = 340
 
 
 MIC_DISTANCE_4 = 0.081
 MAX_TDOA_4 = MIC_DISTANCE_4 / float(SOUND_SPEED)
-
 
 class MicArray(object):
 	def __init__(self, rate=16000, channels=4, chunk_size=None):
@@ -27,6 +28,7 @@ class MicArray(object):
 		self.pyaudio_instance = pyaudio.PyAudio()
 		self.SILENCE_LIMIT = 5
 		self.PREV_AUDIO = 0.5
+		self.START_TIME = time.time()
 		# Need to figure out better way to set threshold
 		self.THRESHOLD = int(self.setup_mic()) * 1.5
 		self.queue = Queue.Queue()
@@ -69,7 +71,8 @@ class MicArray(object):
 		file_writer.write(recording_name + "\n")
 
 	def save_speech(self, data, p):
-		recording_name = str(int(time.time()))
+		record_time = int(time.time())
+		recording_name = str(record_time)
 		filename = 'audio_' + recording_name
 		self.record_to_file(filename + ".wav")
 		data = ''.join(data)
@@ -79,6 +82,7 @@ class MicArray(object):
 		wf.setframerate(self.RATE)
 		wf.writeframes(data)
 		wf.close()
+		return record_time
 
 
 	def get_direction(self, buf):
@@ -111,15 +115,25 @@ class MicArray(object):
 			pass
 		return best_guess
 
+	def get_direction2(self, frames):
+		frames = np.fromstring(frames, dtype='int16')
+		direction = self.get_direction(frames)
+		return direction
+
+	def record_time_stamp(self, time_of_recording, direction):
+		with open('direction_time_stamps.csv', 'ab') as csv_file:
+			direction_writer = csv.writer(csv_file, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+			direction_writer.writerow([time_of_recording, direction])
 
 	def run(self, num_phrases=-1):
+		self.START_TIME = time.time()
 		p = pyaudio.PyAudio()
 		device_index = None
 		for i in range(self.pyaudio_instance.get_device_count()):
 			dev = self.pyaudio_instance.get_device_info_by_index(i)
 			name = dev['name'].encode('utf-8')
 			if dev['maxInputChannels'] == self.CHANNELS:
-				print('Use {}'.format(name))
+				print('Using {}'.format(name))
 				device_index = i
 				break
 
@@ -153,17 +167,20 @@ class MicArray(object):
 					print "Starting record of phrase"
 					started = True
 				audio2send.append(cur_data)
+				frames = audio2send[len(audio2send)-2]
+				if frames:
+					direction = self.get_direction2(frames)
+					pixels.wakeup(direction)
+					self.record_time_stamp(str(int(time.time() -self.START_TIME)), direction)
 			elif started:
 				print "Finished"
 				# The limit was reached, finish capture and deliver.
-				self.save_speech(list(prev_audio) + audio2send, p)
-				frames = audio2send[len(audio2send)/2]
-				if not frames:
-					continue
-				frames = np.fromstring(frames, dtype='int16')
-				direction = self.get_direction(frames)
-				pixels.wakeup(direction)
-				print int(direction)
+				time_recorded = self.save_speech(list(prev_audio) + audio2send, p)
+				frames = audio2send[len(audio2send)-2]
+				if frames:
+					direction = self.get_direction2(frames)
+					pixels.wakeup(direction)
+					self.record_time_stamp(str(int(time_recorded-self.START_TIME)), direction)
 				started = False
 				slid_win = deque(maxlen=self.SILENCE_LIMIT * rel)
 				prev_audio = deque(maxlen=0.5 * rel)
