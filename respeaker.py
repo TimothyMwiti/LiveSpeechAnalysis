@@ -23,14 +23,13 @@ class MicArray(object):
 		self.FORMAT = pyaudio.paInt16
 		self.CHANNELS = channels
 		self.RATE = rate
-		self.CHUNK = 4000
+		self.CHUNK = chunk_size if chunk_size else 1024
 		self.RECORD_SECONDS = 3.5
 		self.pyaudio_instance = pyaudio.PyAudio()
 		self.SILENCE_LIMIT = 5
 		self.PREV_AUDIO = 0.5
 		self.START_TIME = time.time()
-		# Need to figure out better way to set threshold
-		self.THRESHOLD = int(self.setup_mic()) * 1.5
+		self.THRESHOLD = self.setup_mic()
 		self.queue = Queue.Queue()
 
 	def setup_mic(self, num_samples=50):
@@ -76,7 +75,7 @@ class MicArray(object):
 		filename = 'audio_' + recording_name
 		self.record_to_file(filename + ".wav")
 		data = ''.join(data)
-		wf = wave.open(filename + '.wav', 'wb')
+		wf = wave.open('./audio_files/' + filename + '.wav', 'wb')
 		wf.setnchannels(4)
 		wf.setsampwidth(p.get_sample_size(pyaudio.paInt16))
 		wf.setframerate(self.RATE)
@@ -115,7 +114,7 @@ class MicArray(object):
 			pass
 		return best_guess
 
-	def get_direction2(self, frames):
+	def get_direction_helper(self, frames):
 		frames = np.fromstring(frames, dtype='int16')
 		direction = self.get_direction(frames)
 		return direction
@@ -159,6 +158,8 @@ class MicArray(object):
 		n = num_phrases
 		response = []
 		print self.THRESHOLD
+		time_counter = time.time()
+		save_time_counter = time.time()
 		while num_phrases == -1 or n > 0:
 			cur_data = stream.read(self.CHUNK)
 			slid_win.append(math.sqrt(abs(audioop.avg(cur_data, 4))))
@@ -169,16 +170,27 @@ class MicArray(object):
 				audio2send.append(cur_data)
 				frames = audio2send[len(audio2send)-2]
 				if frames:
-					direction = self.get_direction2(frames)
+					direction = self.get_direction_helper(frames)
 					pixels.wakeup(direction)
-					self.record_time_stamp(str(int(time.time() -self.START_TIME)), direction)
+					if time.time()-time_counter >= 10:
+						time_counter = time.time()
+						self.record_time_stamp(str(int(time.time() -self.START_TIME)), direction)
+					if time.time()-save_time_counter >= 60:
+						save_time_counter = time.time()
+						time_recorded = self.save_speech(list(prev_audio) + audio2send, p)
+						started = False
+						slid_win = deque(maxlen=self.SILENCE_LIMIT * rel)
+						prev_audio = deque(maxlen=0.5 * rel)
+						audio2send = []
+						n -= 1
+						print 'Listening ...'
 			elif started:
 				print "Finished"
 				# The limit was reached, finish capture and deliver.
 				time_recorded = self.save_speech(list(prev_audio) + audio2send, p)
 				frames = audio2send[len(audio2send)-2]
 				if frames:
-					direction = self.get_direction2(frames)
+					direction = self.get_direction_helper(frames)
 					pixels.wakeup(direction)
 					self.record_time_stamp(str(int(time_recorded-self.START_TIME)), direction)
 				started = False
