@@ -1,5 +1,6 @@
 import pyaudio
 import Queue
+from threading import Thread
 import numpy as np
 from gcc_phat import gcc_phat
 import math
@@ -11,11 +12,18 @@ from pixels import pixels
 import csv
 import sys
 import os
+import ntplib
 
+SOUND_SPEED = 340
+
+
+MIC_DISTANCE_4 = 0.081
+MAX_TDOA_4 = MIC_DISTANCE_4 / float(SOUND_SPEED)
+
+DIRECTIONS_QUEUE = Queue.Queue()
+AUDIO_QUEUE = Queue.Queue()
 
 try:
-	print 'synchronizing time...'
-	import ntplib
 	client = ntplib.NTPClient()
 	response = client.request('pool.ntp.org')
 	print time.localtime(response.tx_time)
@@ -23,13 +31,7 @@ try:
 except:
 	print('Could not sync with time server.')
 
-print('Done synchronizing time...')
-
-SOUND_SPEED = 340
-
-
-MIC_DISTANCE_4 = 0.081
-MAX_TDOA_4 = MIC_DISTANCE_4 / float(SOUND_SPEED)
+print('Done.')
 
 class MicArray(object):
 	def __init__(self, rate=16000, channels=4, chunk_size=None):
@@ -81,17 +83,28 @@ class MicArray(object):
 		file_writer = open('recordings.txt', 'a')
 		file_writer.write(recording_name + "\n")
 
-	def save_speech(self, data, p):
-		filename = self.convert_time(time.time())
-		self.record_to_file(filename + ".wav")
-		data = ''.join(data)
-		wf = wave.open('./audio_files/' + filename + '.wav', 'wb')
-		wf.setnchannels(4)
-		wf.setsampwidth(p.get_sample_size(pyaudio.paInt16))
-		wf.setframerate(self.RATE)
-		wf.writeframes(data)
-		wf.close()
-		return filename
+	def save_speech(self):
+		while True:
+			t_tuple = None
+			if not AUDIO_QUEUE.empty():
+				t_tuple = AUDIO_QUEUE.get()
+				data = t_tuple[1]
+				time_recorded = t_tuple[0]
+				if data is not None:
+					p = self.pyaudio_instance
+					filename = self.convert_time(time_recorded)
+					self.record_to_file(filename + ".wav")
+					data = ''.join(data)
+					wf = wave.open('./audio_files/' + filename + '.wav', 'wb')
+					wf.setnchannels(4)
+					wf.setsampwidth(p.get_sample_size(pyaudio.paInt16))
+					wf.setframerate(self.RATE)
+					wf.writeframes(data)
+					wf.close()
+			else:
+				time.sleep(25)
+
+		print 'Exiting save audio...'
 
 	def get_direction(self, buf):
 		best_guess = None
@@ -128,7 +141,26 @@ class MicArray(object):
 		direction = self.get_direction(frames)
 		return direction
 
-	def record_time_stamp(self, time_of_recording, direction):
+	def record_time_stamp(self):
+		while True:
+			t_tuple = None
+			if not DIRECTIONS_QUEUE.empty():
+				t_tuple = DIRECTIONS_QUEUE.get()
+				frames = t_tuple[0]
+				time_recorded = t_tuple[1]
+				try:
+					direction = self.get_direction_helper(frames)
+					pixels.wakeup(direction)
+					print direction
+					self.record_time_stamp2(self.convert_time(time_recorded), direction)
+				except:
+					print 'could not get direction'
+					continue
+			else:
+				time.sleep(5)
+		print 'Exiting recording time stamps'
+
+	def record_time_stamp2(self, time_of_recording, direction):
 		with open('direction_time_stamps.csv', 'ab') as csv_file:
 			direction_writer = csv.writer(csv_file, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
 			direction_writer.writerow([time_of_recording, direction])
@@ -138,9 +170,9 @@ class MicArray(object):
 		return date_val[3].replace(':','')
 
 	def run(self, num_phrases=-1):
-		p = pyaudio.PyAudio()
+		p = self.pyaudio_instance
 		device_index = None
-		print 'Setting up pyaudio...'
+		print 'Setting up pyaudio ...'
 		for i in range(self.pyaudio_instance.get_device_count()):
 			dev = self.pyaudio_instance.get_device_info_by_index(i)
 			name = dev['name'].encode('utf-8')
@@ -185,23 +217,12 @@ class MicArray(object):
 					audio2send.append(cur_data)
 					frames = audio2send[len(audio2send)-2]
 					if frames:
-						# print 'yes frames'
-						try:
-							direction = self.get_direction_helper(frames)
-							pixels.wakeup(direction)
-							# print direction
-						except:
-							print 'could not record direction...moving on...'
-						# Record time to file in 10 second intervals
-						if time.time()-time_counter >= 10:
-							print 'recording direction: ', direction
+						if time.time()-time_counter >= 5:
 							time_counter = time.time()
-							self.record_time_stamp(self.convert_time(time.time()), direction)
-
-							#Write data to audio file every 180 seconds
-					if time.time()-save_time_counter >= 60:
+							DIRECTIONS_QUEUE.put((frames, time.time(),))
+					if time.time()-save_time_counter >= 20:
 						save_time_counter = time.time()
-						time_recorded = self.save_speech(list(prev_audio) + audio2send, p)
+						AUDIO_QUEUE.put((save_time_counter,list(prev_audio) + audio2send,))
 						started = False
 						slid_win = deque(maxlen=self.SILENCE_LIMIT * rel)
 						prev_audio = deque(maxlen=0.5 * rel)
@@ -210,16 +231,11 @@ class MicArray(object):
 						print 'Listening ...'
 				elif started:
 					print "Finished"
-					# The limit was reached, finish capture and deliver.
-					time_recorded = self.save_speech(list(prev_audio) + audio2send, p)
+					save_time_counter = time.time()
+					AUDIO_QUEUE.put((save_time_counter, list(prev_audio) + audio2send,))
 					frames = audio2send[len(audio2send)-2]
 					if frames:
-						try:
-							direction = self.get_direction_helper(frames)
-							pixels.wakeup(direction)
-						except:
-							print 'could not record direction...moving on...'
-						self.record_time_stamp(time_recorded, direction)
+						DIRECTIONS_QUEUE.put((frames, save_time_counter,))
 					started = False
 					slid_win = deque(maxlen=self.SILENCE_LIMIT * rel)
 					prev_audio = deque(maxlen=0.5 * rel)
@@ -230,12 +246,11 @@ class MicArray(object):
 					prev_audio.append(cur_data)
 			except KeyboardInterrupt:
 				print 'saving last file before exit...'
-				time_recorded = self.save_speech(list(prev_audio) + audio2send, p)
+				end_time = time.time()
+				AUDIO_QUEUE.put((end_time, list(prev_audio) + audio2send,))
 				frames = audio2send[len(audio2send) - 2]
 				if frames:
-					direction = self.get_direction_helper(frames)
-					pixels.wakeup(direction)
-					self.record_time_stamp(time_recorded, direction)
+					DIRECTIONS_QUEUE.put((frames, end_time,))
 				sys.exit()
 		print "* Done recording...Exiting..."
 		stream.close()
@@ -244,4 +259,13 @@ class MicArray(object):
 
 if __name__ == '__main__':
 	sd = MicArray()
-	sd.run()
+	t1 = Thread(target = sd.run)
+	t2 = Thread(target = sd.record_time_stamp)
+	t3 = Thread(target = sd.save_speech)
+	t1.start()
+	t2.start()
+	t3.start()
+	t1.join()
+	t2.join()
+	t3.join()
+
