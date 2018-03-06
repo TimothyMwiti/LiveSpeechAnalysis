@@ -102,7 +102,11 @@ class MicArray(object):
 					wf.setframerate(self.RATE)
 					wf.writeframes(data)
 					wf.close()
-					print speech_2_text('./audio_files/' + filename + ".wav")
+
+					# AUDIO IS SAVED IN A AUDIO FILES FOLDER IN SAME DIRECTORY AS THIS SCRIPT
+					# TRANSCRIPT FROM THE RECORDED AUDIO
+
+					transcript = speech_2_text('./audio_files/' + filename + ".wav")
 			else:
 				time.sleep(25)
 
