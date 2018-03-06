@@ -13,6 +13,7 @@ import csv
 import sys
 import os
 import ntplib
+from speech_analysis import speech_2_text
 
 SOUND_SPEED = 340
 
@@ -101,6 +102,7 @@ class MicArray(object):
 					wf.setframerate(self.RATE)
 					wf.writeframes(data)
 					wf.close()
+					print speech_2_text(filename + ".wav")
 			else:
 				time.sleep(25)
 
