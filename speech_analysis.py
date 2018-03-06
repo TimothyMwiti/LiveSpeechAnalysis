@@ -13,8 +13,8 @@ hits_recorder: Updates a dictionary fo words with a count of number of utterance
 
 def speech_2_text(file_name):
 	speech_to_text = SpeechToTextV1(
-		username='18d94efb-7bb4-4eaf-b723-704844277c73',
-		password='vFTD46r7rbiY',
+		username='',
+		password='',
 		x_watson_learning_opt_out=False
 	)
 	print 'starting process '
@@ -32,8 +32,6 @@ def speech_2_text(file_name):
 		print ' going into loop...'
 		for element in first_array:
 			transcript += element["alternatives"][0]["transcript"] + ' '
-			print transcript
-			print '\n\n\n'
 
 		return transcript
 
