@@ -13,13 +13,11 @@ import csv
 import sys
 import os
 import ntplib
+from speech_analysis import speech_2_text
 
 SOUND_SPEED = 340
-
-
 MIC_DISTANCE_4 = 0.081
 MAX_TDOA_4 = MIC_DISTANCE_4 / float(SOUND_SPEED)
-
 DIRECTIONS_QUEUE = Queue.Queue()
 AUDIO_QUEUE = Queue.Queue()
 
@@ -32,6 +30,7 @@ except:
 	print('Could not sync with time server.')
 
 print('Done.')
+
 
 class MicArray(object):
 	def __init__(self, rate=16000, channels=4, chunk_size=None):
@@ -79,10 +78,12 @@ class MicArray(object):
 		p.terminate()
 		return r
 
+	# Records name of audio file to a text document
 	def record_to_file(self, recording_name):
 		file_writer = open('recordings.txt', 'a')
 		file_writer.write(recording_name + "\n")
 
+	# Save recorded speech to a wav file.
 	def save_speech(self):
 		while True:
 			t_tuple = None
@@ -101,11 +102,15 @@ class MicArray(object):
 					wf.setframerate(self.RATE)
 					wf.writeframes(data)
 					wf.close()
+
+					# AUDIO IS SAVED IN A AUDIO FILES FOLDER IN SAME DIRECTORY AS THIS SCRIPT
+					# TRANSCRIPT FROM THE RECORDED AUDIO
+
+					transcript = speech_2_text('./audio_files/' + filename + ".wav")
 			else:
 				time.sleep(25)
 
-		print 'Exiting save audio...'
-
+	# Gets the DOA for audio
 	def get_direction(self, buf):
 		best_guess = None
 		if self.CHANNELS == 4:
@@ -141,6 +146,7 @@ class MicArray(object):
 		direction = self.get_direction(frames)
 		return direction
 
+	# records time that DOA was recorded to a CSV file
 	def record_time_stamp(self):
 		while True:
 			t_tuple = None
@@ -152,22 +158,21 @@ class MicArray(object):
 					direction = self.get_direction_helper(frames)
 					pixels.wakeup(direction)
 					print direction
-					self.record_time_stamp2(self.convert_time(time_recorded), direction)
+					self.record_time_stamp_helper(self.convert_time(time_recorded), direction)
 				except:
 					print 'could not get direction'
 					continue
 			else:
 				time.sleep(5)
-		print 'Exiting recording time stamps'
 
-	def record_time_stamp2(self, time_of_recording, direction):
+	def record_time_stamp_helper(self, time_of_recording, direction):
 		with open('direction_time_stamps.csv', 'ab') as csv_file:
 			direction_writer = csv.writer(csv_file, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
 			direction_writer.writerow([time_of_recording, direction])
 
 	def convert_time(self, time_to_convert):
 		date_val = time.ctime(time_to_convert).split()
-		return date_val[3].replace(':','')
+		return date_val[3].replace(':', '')
 
 	def run(self, num_phrases=-1):
 		p = self.pyaudio_instance
@@ -222,7 +227,7 @@ class MicArray(object):
 							DIRECTIONS_QUEUE.put((frames, time.time(),))
 					if time.time()-save_time_counter >= 120:
 						save_time_counter = time.time()
-						AUDIO_QUEUE.put((save_time_counter,list(prev_audio) + audio2send,))
+						AUDIO_QUEUE.put((save_time_counter, list(prev_audio) + audio2send,))
 						started = False
 						slid_win = deque(maxlen=self.SILENCE_LIMIT * rel)
 						prev_audio = deque(maxlen=0.5 * rel)
@@ -259,13 +264,12 @@ class MicArray(object):
 
 if __name__ == '__main__':
 	sd = MicArray()
-	t1 = Thread(target = sd.run)
-	t2 = Thread(target = sd.record_time_stamp)
-	t3 = Thread(target = sd.save_speech)
+	t1 = Thread(target=sd.run)
+	t2 = Thread(target=sd.record_time_stamp)
+	t3 = Thread(target=sd.save_speech)
 	t1.start()
 	t2.start()
 	t3.start()
 	t1.join()
 	t2.join()
 	t3.join()
-

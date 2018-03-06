@@ -32,8 +32,6 @@ def speech_2_text(file_name):
 		print ' going into loop...'
 		for element in first_array:
 			transcript += element["alternatives"][0]["transcript"] + ' '
-			print transcript
-			print '\n\n\n'
 
 		return transcript
 
