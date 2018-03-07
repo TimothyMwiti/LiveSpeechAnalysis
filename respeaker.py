@@ -111,7 +111,7 @@ class MicArray(object):
 					#the following are things Marcelo Added -------------------------------------------------------------------------------
 
 					#This process the speech recognition results. Wordlist contains detailed information about each word. utterances is just the transcript
-					wordlist,utterances = process_speech_result(sp_1)
+					wordlists,utterances = process_speech_result(transcript)
 					#this prepares the liwc dictionary (we can probably do this once and store it)
 					emots, liwcDictionary = populate_dictionary_index()
 
