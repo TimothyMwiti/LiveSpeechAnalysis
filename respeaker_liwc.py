@@ -1,6 +1,7 @@
 import nltk
 from nltk.stem import PorterStemmer
 from nltk import wordpunct_tokenize
+#from nltk.corpus import *
 
 def listContains(l, word):
 	for item in l:
@@ -12,14 +13,18 @@ def listContainsVariant(l, word):
 	for item in l:
 		if item.endswith("*"):
 			nItem = item.replace('*','').strip()
-			if word.startswith(nItem):
-				return 1
+			try:
+				if word.startswith(nItem):
+					return 1
+			except:
+					pass
 		else:
 			if item == word:
 				return 1
 	return 0
-def populate_dictionary_index(iq):	
+def populate_dictionary_index():	
 	print "populating dictionary"
+	iq = open("LIWC2007dictionary poster marcelo.csv", 'r')
 	s=0
 	listofEmots=[]
 	liwcDictionary={}
@@ -61,20 +66,18 @@ def write_to_file(output, listofEmots, wordCount, wordDictionary):
 def process_text(txt, liwcDictionary, listofEmots, stemmer=PorterStemmer()):
 	print "processing text"
 	wordDictionary = {}
-	strstopwords = [str(w).lower() for w in stopwords.words('english')]
+	#strstopwords = [str(w).lower() for w in stopwords.words('english')]
 
 	c_text = nltk.wordpunct_tokenize(txt)
 	base_words = [word.lower() for word in c_text]
 	stemmed_words = [stemmer.stem(word.lower()) for word in base_words]
-	non_stop = [word.lower() for word in base_words if word.lower() not in strstopwords]
+	#non_stop = [word.lower() for word in base_words if word.lower() not in strstopwords]
 	no_punct = [word.lower() for word in base_words if word.lower().isalpha()]
 	wordCount = 0
 	for cWord in no_punct:
 		cWord = cWord.lower().strip()
-		print cWord
 		for emot in listofEmots:
 			if emot!='Entry':
-				print "Emotion", emot
 				if (listContainsVariant(liwcDictionary[emot], cWord)==1):
 					emotCount = 0
 					if (wordDictionary.has_key(emot)):
@@ -84,8 +87,7 @@ def process_text(txt, liwcDictionary, listofEmots, stemmer=PorterStemmer()):
 		wordCount = wordCount + 1
 	return wordCount, wordDictionary
 if __name__ == '__main__':
-	iq = open("LIWC2007dictionary poster marcelo.csv", 'r')
-	emots, liwcDictionary = populate_dictionary_index(iq)
+	emots, liwcDictionary = populate_dictionary_index()
 	for a in range(10):
 		r = raw_input("Input text\n")
 		count, emot_dict = process_text(r, liwcDictionary, emots)

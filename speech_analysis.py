@@ -14,8 +14,8 @@ hits_recorder: Updates a dictionary fo words with a count of number of utterance
 
 def speech_2_text(file_name):
 	speech_to_text = SpeechToTextV1(
-		username='',
-		password='',
+		username='ed892e1d-aa33-451c-9d93-630eef84fc84',
+		password='AzuW62mXZMmQ',
 		x_watson_learning_opt_out=False
 	)
 	print 'starting process '
@@ -27,16 +27,19 @@ def speech_2_text(file_name):
 			audio_file,
 			content_type='audio/wav',
 			timestamps=True,
-			word_confidence=True,
-			speaker_labels=True)
+			word_confidence=True, speaker_labels=True)
 		first_array = results["results"]
+		#transcript = ''
+		#print ' going into loop...'
+		#for element in first_array:
+		#	transcript += element["alternatives"][0]["transcript"] + ' '
 
 		return first_array
 
-def process_speech_result(sp_1):
+def process_speech_result(speech_result):
 	word_list=[]
 	transcripts = []
-	for result in sp_1:
+	for result in speech_result:
 		sentence_confidence = result['alternatives'][0]['confidence'] #gets likelihood of sentebce - should drop low values
 		c_words = [sentence_confidence]
 		transcript_txt= []
