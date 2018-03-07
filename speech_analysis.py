@@ -1,5 +1,6 @@
 from watson_developer_cloud import SpeechToTextV1
 from nltk.corpus import stopwords
+from watson_credentials import username, password
 
 '''
 Written By Timothy Mwiti 2017
@@ -26,15 +27,30 @@ def speech_2_text(file_name):
 			audio_file,
 			content_type='audio/wav',
 			timestamps=True,
-			word_confidence=True)
+			word_confidence=True,
+			speaker_labels=True)
 		first_array = results["results"]
-		transcript = ''
-		print ' going into loop...'
-		for element in first_array:
-			transcript += element["alternatives"][0]["transcript"] + ' '
 
-		return transcript
+		return first_array
 
+def process_speech_result(sp_1):
+	word_list=[]
+	transcripts = []
+	for result in sp_1:
+		sentence_confidence = result['alternatives'][0]['confidence'] #gets likelihood of sentebce - should drop low values
+		c_words = [sentence_confidence]
+		transcript_txt= []
+		for i in range(len(result['alternatives'][0]['word_confidence'])):
+			#storing the word, confidence, start time and stop time
+			c_word = result['alternatives'][0]['word_confidence'][i][0]
+			c_word_confidence = result['alternatives'][0]['word_confidence'][i][1]
+			c_word_start = result['alternatives'][0]['timestamps'][i][1]
+			c_word_end = result['alternatives'][0]['timestamps'][i][2]
+			c_words.append([c_word, c_word_confidence, c_word_start, c_word_end])
+			transcript_txt.append(c_word)
+		word_list.append(c_words)
+		transcripts.append(' '.join(transcript_txt))
+	return word_list, transcripts
 
 # creates a corpus from a text file. (removes stop words)
 def create_corpus(text_file):

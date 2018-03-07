@@ -13,8 +13,9 @@ import csv
 import sys
 import os
 import ntplib
-from speech_analysis import speech_2_text
-
+from speech_analysis import speech_2_text, process_speech_result
+from respeaker_liwc import populate_dictionary_index, process_text
+from respeaker_questions import extract_prosodic_features, get_contour_features, check_question_words, extract_general_stats, get_segment_pitch_features, extract_pitch
 SOUND_SPEED = 340
 MIC_DISTANCE_4 = 0.081
 MAX_TDOA_4 = MIC_DISTANCE_4 / float(SOUND_SPEED)
@@ -107,6 +108,25 @@ class MicArray(object):
 					# TRANSCRIPT FROM THE RECORDED AUDIO
 
 					transcript = speech_2_text('./audio_files/' + filename + ".wav")
+					#the following are things Marcelo Added -------------------------------------------------------------------------------
+
+					#This process the speech recognition results. Wordlist contains detailed information about each word. utterances is just the transcript
+					wordlist,utterances = process_speech_result(sp_1)
+					#this prepares the liwc dictionary (we can probably do this once and store it)
+					emots, liwcDictionary = populate_dictionary_index()
+
+					#Get this pitch data for the entire sample. We'll look at subsets of the audio later
+					all_pitch = extract_pitch('./audio_files/' + filename + ".wav")
+					#iterate over all utterances returned from speech recognition
+					for i in range(len(utterances)):
+					    text=utterances[i]
+					    #use thel liwc dictionary to count important features
+					    count, emot_dict = process_text(text, liwcDictionary, emots)
+					    #get indices that might be useful for question detection
+					    quest_indices, inquiry_indices = check_question_words(text)
+					   	#utterance_length = len(wordpunct_tokenize(text))
+					   	#get other features that might help with question detection
+					    fo_slope_vals, fo_slope, fo_end_vals, o_fos=get_segment_pitch_features(all_pitch,wordlists[i][1][2], wordlists[i][-1][3]) 
 			else:
 				time.sleep(25)
 
