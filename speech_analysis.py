@@ -28,29 +28,35 @@ def speech_2_text(file_name):
 			content_type='audio/wav',
 			timestamps=True,
 			word_confidence=True, speaker_labels=True)
-		first_array = results["results"]
+		
 		#transcript = ''
 		#print ' going into loop...'
 		#for element in first_array:
 		#	transcript += element["alternatives"][0]["transcript"] + ' '
 
-		return first_array
+		return results
 
-def process_speech_result(speech_result):
+def process_speech_result(data, start=0.0, end=0.0):
+	speech_result = data['results']
+	speaker_labels = data['speaker_labels']
 	word_list=[]
 	transcripts = []
+	index = 0
 	for result in speech_result:
 		sentence_confidence = result['alternatives'][0]['confidence'] #gets likelihood of sentebce - should drop low values
 		c_words = [sentence_confidence]
 		transcript_txt= []
 		for i in range(len(result['alternatives'][0]['word_confidence'])):
 			#storing the word, confidence, start time and stop time
+			c_speaker_conf = speaker_labels[i]['confidence']
+			c_speaker = speaker_labels[i]['speaker']
 			c_word = result['alternatives'][0]['word_confidence'][i][0]
 			c_word_confidence = result['alternatives'][0]['word_confidence'][i][1]
-			c_word_start = result['alternatives'][0]['timestamps'][i][1]
-			c_word_end = result['alternatives'][0]['timestamps'][i][2]
-			c_words.append([c_word, c_word_confidence, c_word_start, c_word_end])
+			c_word_start = result['alternatives'][0]['timestamps'][i][1] + start
+			c_word_end = result['alternatives'][0]['timestamps'][i][2] + start
+			c_words.append([c_word, c_word_confidence, c_word_start, c_word_end, c_speaker, c_speaker_conf])
 			transcript_txt.append(c_word)
+			index+=1
 		word_list.append(c_words)
 		transcripts.append(' '.join(transcript_txt))
 	return word_list, transcripts

@@ -107,11 +107,11 @@ class MicArray(object):
 					# AUDIO IS SAVED IN A AUDIO FILES FOLDER IN SAME DIRECTORY AS THIS SCRIPT
 					# TRANSCRIPT FROM THE RECORDED AUDIO
 
-					transcript = speech_2_text('./audio_files/' + filename + ".wav")
+					speech_result = speech_2_text('./audio_files/' + filename + ".wav")
 					#the following are things Marcelo Added -------------------------------------------------------------------------------
 
 					#This process the speech recognition results. Wordlist contains detailed information about each word. utterances is just the transcript
-					wordlists,utterances = process_speech_result(transcript)
+					wordlists,utterances = process_speech_result(speech_result)
 					#this prepares the liwc dictionary (we can probably do this once and store it)
 					emots, liwcDictionary = populate_dictionary_index()
 
