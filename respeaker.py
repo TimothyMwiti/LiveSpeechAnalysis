@@ -94,7 +94,8 @@ class MicArray(object):
 				time_recorded = t_tuple[0]
 				if data is not None:
 					p = self.pyaudio_instance
-					filename = self.convert_time(time_recorded)
+					# filename = self.convert_time(time_recorded)
+					filename = time_recorded
 					self.record_to_file(filename + ".wav")
 					data = ''.join(data)
 					wf = wave.open('./audio_files/' + filename + '.wav', 'wb')
@@ -103,30 +104,28 @@ class MicArray(object):
 					wf.setframerate(self.RATE)
 					wf.writeframes(data)
 					wf.close()
-
 					# AUDIO IS SAVED IN A AUDIO FILES FOLDER IN SAME DIRECTORY AS THIS SCRIPT
 					# TRANSCRIPT FROM THE RECORDED AUDIO
-
 					speech_result = speech_2_text('./audio_files/' + filename + ".wav")
-					#the following are things Marcelo Added -------------------------------------------------------------------------------
-
-					#This process the speech recognition results. Wordlist contains detailed information about each word. utterances is just the transcript
-					wordlists,utterances = process_speech_result(speech_result)
-					#this prepares the liwc dictionary (we can probably do this once and store it)
+					# the following are things Marcelo Added
+					# This process the speech recognition results. Wordlist contains detailed information about each
+					#  word. utterances is just the transcript
+					wordlists, utterances = process_speech_result(speech_result, start=filename)
+					# this prepares the liwc dictionary (we can probably do this once and store it)
 					emots, liwcDictionary = populate_dictionary_index()
 
-					#Get this pitch data for the entire sample. We'll look at subsets of the audio later
+					# Get this pitch data for the entire sample. We'll look at subsets of the audio later
 					all_pitch = extract_pitch('./audio_files/' + filename + ".wav")
-					#iterate over all utterances returned from speech recognition
+					# iterate over all utterances returned from speech recognition
 					for i in range(len(utterances)):
-					    text=utterances[i]
-					    #use thel liwc dictionary to count important features
-					    count, emot_dict = process_text(text, liwcDictionary, emots)
-					    #get indices that might be useful for question detection
-					    quest_indices, inquiry_indices = check_question_words(text)
-					   	#utterance_length = len(wordpunct_tokenize(text))
-					   	#get other features that might help with question detection
-					    fo_slope_vals, fo_slope, fo_end_vals, o_fos=get_segment_pitch_features(all_pitch,wordlists[i][1][2], wordlists[i][-1][3]) 
+						text=utterances[i]
+						# use the liwc dictionary to count important features
+						count, emot_dict = process_text(text, liwcDictionary, emots)
+						# get indices that might be useful for question detection
+						quest_indices, inquiry_indices = check_question_words(text)
+						# utterance_length = len(wordpunct_tokenize(text))
+						# get other features that might help with question detection
+						fo_slope_vals, fo_slope, fo_end_vals, o_fos=get_segment_pitch_features(all_pitch,wordlists[i][1][2], wordlists[i][-1][3])
 			else:
 				time.sleep(25)
 
@@ -246,8 +245,9 @@ class MicArray(object):
 							time_counter = time.time()
 							DIRECTIONS_QUEUE.put((frames, time.time(),))
 					if time.time()-save_time_counter >= 120:
-						save_time_counter = time.time()
+						# save_time_counter = time.time()
 						AUDIO_QUEUE.put((save_time_counter, list(prev_audio) + audio2send,))
+						save_time_counter = time.time()
 						started = False
 						slid_win = deque(maxlen=self.SILENCE_LIMIT * rel)
 						prev_audio = deque(maxlen=0.5 * rel)
@@ -256,8 +256,9 @@ class MicArray(object):
 						print 'Listening ...'
 				elif started:
 					print "Finished"
-					save_time_counter = time.time()
+					# save_time_counter = time.time()
 					AUDIO_QUEUE.put((save_time_counter, list(prev_audio) + audio2send,))
+					save_time_counter = time.time()
 					frames = audio2send[len(audio2send)-2]
 					if frames:
 						DIRECTIONS_QUEUE.put((frames, save_time_counter,))
@@ -272,7 +273,7 @@ class MicArray(object):
 			except KeyboardInterrupt:
 				print 'saving last file before exit...'
 				end_time = time.time()
-				AUDIO_QUEUE.put((end_time, list(prev_audio) + audio2send,))
+				AUDIO_QUEUE.put((save_time_counter, list(prev_audio) + audio2send,))
 				frames = audio2send[len(audio2send) - 2]
 				if frames:
 					DIRECTIONS_QUEUE.put((frames, end_time,))

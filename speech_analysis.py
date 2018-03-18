@@ -1,6 +1,6 @@
 from watson_developer_cloud import SpeechToTextV1
 from nltk.corpus import stopwords
-from watson_credentials import username, password
+import json
 
 '''
 Written By Timothy Mwiti 2017
@@ -14,11 +14,11 @@ hits_recorder: Updates a dictionary fo words with a count of number of utterance
 
 def speech_2_text(file_name):
 	speech_to_text = SpeechToTextV1(
-		username='ed892e1d-aa33-451c-9d93-630eef84fc84',
-		password='AzuW62mXZMmQ',
-		x_watson_learning_opt_out=False
+		username='18d94efb-7bb4-4eaf-b723-704844277c73',
+		password='vFTD46r7rbiY',
+		x_watson_learning_opt_out=False,
 	)
-	print 'starting process '
+	print 'starting process...'
 	speech_to_text.get_model('en-US_BroadbandModel')
 
 	with open(file_name, 'rb') as audio_file:
@@ -27,14 +27,18 @@ def speech_2_text(file_name):
 			audio_file,
 			content_type='audio/wav',
 			timestamps=True,
-			word_confidence=True, speaker_labels=True)
-		
-		#transcript = ''
-		#print ' going into loop...'
-		#for element in first_array:
-		#	transcript += element["alternatives"][0]["transcript"] + ' '
-
+			word_confidence=True,
+			speaker_labels=True)
+		print results
 		return results
+
+
+def write_dict_to_json(dict_2_write):
+	with open('transcript.json', 'w') as fp:
+		json.dump(dict_2_write, fp)
+	print 'done writing file...'
+	return
+
 
 def process_speech_result(data, start=0.0, end=0.0):
 	speech_result = data['results']
@@ -43,11 +47,11 @@ def process_speech_result(data, start=0.0, end=0.0):
 	transcripts = []
 	index = 0
 	for result in speech_result:
-		sentence_confidence = result['alternatives'][0]['confidence'] #gets likelihood of sentebce - should drop low values
+		sentence_confidence = result['alternatives'][0]['confidence']  # gets likelihood of sentence - should drop low values
 		c_words = [sentence_confidence]
 		transcript_txt= []
 		for i in range(len(result['alternatives'][0]['word_confidence'])):
-			#storing the word, confidence, start time and stop time
+			# storing the word, confidence, start time and stop time
 			c_speaker_conf = speaker_labels[i]['confidence']
 			c_speaker = speaker_labels[i]['speaker']
 			c_word = result['alternatives'][0]['word_confidence'][i][0]
@@ -56,7 +60,8 @@ def process_speech_result(data, start=0.0, end=0.0):
 			c_word_end = result['alternatives'][0]['timestamps'][i][2] + start
 			c_words.append([c_word, c_word_confidence, c_word_start, c_word_end, c_speaker, c_speaker_conf])
 			transcript_txt.append(c_word)
-			index+=1
+			# print c_words
+			index += 1
 		word_list.append(c_words)
 		transcripts.append(' '.join(transcript_txt))
 	return word_list, transcripts
@@ -82,3 +87,7 @@ def hits_recorder(text, corpus, hits_dict):
 			else:
 				hits_dict[word] = 1
 	return hits_dict
+
+
+# data = speech_2_text('094105.wav')
+# process_speech_result(data, start=1521387321.266)
