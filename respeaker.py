@@ -95,8 +95,13 @@ class MicArray(object):
 				if data is not None:
 					p = self.pyaudio_instance
 <<<<<<< HEAD
+<<<<<<< HEAD
 					#filename = self.convert_time(time_recorded)
 					filename = int(time_recorded*100)
+=======
+					# filename = self.convert_time(time_recorded)
+					filename = time_recorded
+>>>>>>> 10133c784c949e912ab26529510495abe8db815a
 =======
 					# filename = self.convert_time(time_recorded)
 					filename = time_recorded
@@ -113,22 +118,29 @@ class MicArray(object):
 					# TRANSCRIPT FROM THE RECORDED AUDIO
 					speech_result = speech_2_text('./audio_files/' + filename + ".wav")
 <<<<<<< HEAD
+<<<<<<< HEAD
 					#the following are things Marcelo Added -------------------------------------------------------------------------------
 
 					#This process the speech recognition results. Wordlist contains detailed information about each word. utterances is just the transcript
 					wordlists,utterances = process_speech_result(speech_result, start=time_recorded)
 					#this prepares the liwc dictionary (we can probably do this once and store it)
 =======
+=======
+>>>>>>> 10133c784c949e912ab26529510495abe8db815a
 					# the following are things Marcelo Added
 					# This process the speech recognition results. Wordlist contains detailed information about each
 					#  word. utterances is just the transcript
 					wordlists, utterances = process_speech_result(speech_result, start=filename)
 					# this prepares the liwc dictionary (we can probably do this once and store it)
+<<<<<<< HEAD
+>>>>>>> 10133c784c949e912ab26529510495abe8db815a
+=======
 >>>>>>> 10133c784c949e912ab26529510495abe8db815a
 					emots, liwcDictionary = populate_dictionary_index()
 
 					# Get this pitch data for the entire sample. We'll look at subsets of the audio later
 					all_pitch = extract_pitch('./audio_files/' + filename + ".wav")
+<<<<<<< HEAD
 <<<<<<< HEAD
 					#iterate over all utterances returned from speech recognition
 					emots_data = {} #place to store the emotion data by speaker or doa
@@ -156,6 +168,10 @@ class MicArray(object):
 =======
 					# iterate over all utterances returned from speech recognition
 					for i in range(len(utterances)):
+=======
+					# iterate over all utterances returned from speech recognition
+					for i in range(len(utterances)):
+>>>>>>> 10133c784c949e912ab26529510495abe8db815a
 						text=utterances[i]
 						# use the liwc dictionary to count important features
 						count, emot_dict = process_text(text, liwcDictionary, emots)
@@ -164,6 +180,9 @@ class MicArray(object):
 						# utterance_length = len(wordpunct_tokenize(text))
 						# get other features that might help with question detection
 						fo_slope_vals, fo_slope, fo_end_vals, o_fos=get_segment_pitch_features(all_pitch,wordlists[i][1][2], wordlists[i][-1][3])
+<<<<<<< HEAD
+>>>>>>> 10133c784c949e912ab26529510495abe8db815a
+=======
 >>>>>>> 10133c784c949e912ab26529510495abe8db815a
 			else:
 				time.sleep(25)

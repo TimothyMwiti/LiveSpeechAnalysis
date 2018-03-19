@@ -48,10 +48,13 @@ def process_speech_result(data, start=0.0, end=0.0):
 	index = 0
 	for result in speech_result:
 <<<<<<< HEAD
+<<<<<<< HEAD
 		#sentence_confidence = result['alternatives'][0]['confidence'] #gets likelihood of sentebce - should drop low values
 		c_words = []
 		#c_words = [sentence_confidence]
 =======
+=======
+>>>>>>> 10133c784c949e912ab26529510495abe8db815a
 		sentence_confidence = result['alternatives'][0]['confidence']  # gets likelihood of sentence - should drop low values
 		c_words = [sentence_confidence]
 >>>>>>> 10133c784c949e912ab26529510495abe8db815a
