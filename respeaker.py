@@ -95,7 +95,8 @@ class MicArray(object):
 				if data is not None:
 					p = self.pyaudio_instance
 					# filename = self.convert_time(time_recorded)
-					filename = time_recorded
+					filename_float = time_recorded
+					filename = str(filename_float)
 					self.record_to_file(filename + ".wav")
 					data = ''.join(data)
 					wf = wave.open('./audio_files/' + filename + '.wav', 'wb')
@@ -110,7 +111,7 @@ class MicArray(object):
 					# the following are things Marcelo Added
 					# This process the speech recognition results. Wordlist contains detailed information about each
 					#  word. utterances is just the transcript
-					wordlists, utterances = process_speech_result(speech_result, start=filename)
+					wordlists, utterances = process_speech_result(speech_result, start=filename_float)
 					# this prepares the liwc dictionary (we can probably do this once and store it)
 					emots, liwcDictionary = populate_dictionary_index()
 
