@@ -23,7 +23,7 @@ import time, math, os
 import numpy as np
 import pyaudio
 import websocket
-import wave
+import wave, Queue
 from websocket._abnf import ABNF
 from collections import deque
 from respeaker_hi_liwc import populate_dictionary_index_hi, populate_dictionary_index_liwc, process_text
@@ -62,6 +62,10 @@ class Audio_Handler(object):
         self.write_interval = write_interval
         self.chunk_count = self.RATE /self.CHUNK * self.write_interval
         self.writing_audio_to_file = False
+        #self.audio_files_queue = Queue.Queue()
+        self.pitch_data = {}
+        self.data_to_store=[]
+        self.speaker_data = []
 
     def callback(self,in_data, frame_count, time_info, status):
         #print "appending data"
@@ -84,16 +88,23 @@ class Audio_Handler(object):
                         chunk_index, data, frame_count, time_info = self.AUDIO_QUEUE.popleft()
                         if len(data_to_write) == 0:
                             start_time = chunk_index
-                            print chunk_index
+                            #print chunk_index
                         data_to_write.append(data) #could also just compute this based on the chunk_index
                 if len(data_to_write):
                     file_name= str(start_time)+".wav"
-                    wf = wave.open(os.path.join(self.audio_folder, str(start_time) + '.wav'), 'wb')
+                    full_file_path = os.path.join(self.audio_folder, str(start_time) + '.wav')
+                    wf = wave.open(full_file_path, 'wb')
                     wf.setnchannels(self.CHANNELS)
                     wf.setsampwidth(self.pyaudio_instance.get_sample_size(pyaudio.paInt16))
                     wf.setframerate(self.RATE)
                     wf.writeframes(''.join(data_to_write))
                     wf.close()
+                    #self.audio_files_queue.put(full_file_path)
+                    #modified_start_time = start_time * self.CHUNK / self.RATE 
+                    #frames/second frames/chunk chunks seconds/frame *frames/chunk * chunks 
+                    self.pitch_data[start_time] = extract_pitch(full_file_path) #after I store this information
+                    #print len(self.pitch_data)# want to extract the information for each utterance
+
                 self.writing_audio_to_file = False
 
     def read_audio(self):
@@ -178,6 +189,9 @@ class Audio_Handler(object):
                 if not self.processing_asr:
                     self.processing_asr= True
                     self.process_asr_queue()
+        if "speaker_labels" in data:
+            #print "found labels"
+            self.ASR_QUEUE.append(data)
             # This prints out the current fragment that we are working on
             #print(data['results'].keys())
         #if len(FINALS)>0:
@@ -266,45 +280,54 @@ class Audio_Handler(object):
         #need to store directions data
 
         if 'results' in data:
-                speech_result = data['results']
-        #print speaker_labels
-        word_list=[]
-        transcripts = []
-        index = 0
-        speaker_list = []
-        for result in speech_result:
-            #sentence_confidence = result['alternatives'][0]['confidence'] #gets likelihood of sentebce - should drop low values
-            c_words = []
-            #c_words = [sentence_confidence]
-            transcript_txt= []
-            alternative = result['alternatives'][0]
-            if 'word_confidence' in alternative:
-                for word_index in range(len(alternative['word_confidence'])): 
-                    
-                    # storing the word, confidence, start time and stop time
-                    # c_speaker_conf = speaker_labels[i]['confidence']
-                    # c_speaker = speaker_labels[i]['speaker']
-                    c_word = alternative['word_confidence'][word_index][0]
-                    c_word_confidence = alternative['word_confidence'][word_index][1]
-                    c_word_start = alternative['timestamps'][word_index][1]
-                    c_word_end = alternative['timestamps'][word_index][2]
-                    c_words.append([c_word, c_word_confidence, c_word_start, c_word_end])
-                    transcript_txt.append(c_word)
-                    # print c_words
-                    index += 1
-                word_list.append(c_words)
-                transcripts.append(' '.join(transcript_txt))
-            if "speaker_labels" in data:
-                speaker_labels = data['speaker_labels']
-                for label in speaker_labels:
-                        print speaker_labels
+            speech_result = data['results']
+            #print speaker_labels
+            word_list=[]
+            transcripts = []
+            index = 0
+            speaker_list = []
+            for result in speech_result:
+                #sentence_confidence = result['alternatives'][0]['confidence'] #gets likelihood of sentebce - should drop low values
+                c_words = []
+                #c_words = [sentence_confidence]
+                transcript = data['results'][0]['alternatives'][0]['transcript']
+                alternative = result['alternatives'][0]
+                if 'word_confidence' in alternative:
+                    for word_index in range(len(alternative['word_confidence'])): 
+                        
                         # storing the word, confidence, start time and stop time
-                        c_speaker_conf = label['confidence']
-                        c_speaker = label['speaker']
-                        c_speaker_start = label['to']
-                        c_speaker_end = label['from']
-                        speaker_list.append(label)
-        self.process_utterances(word_list, transcripts)
+                        # c_speaker_conf = speaker_labels[i]['confidence']
+                        # c_speaker = speaker_labels[i]['speaker']
+                        c_word = alternative['word_confidence'][word_index][0]
+                        c_word_confidence = alternative['word_confidence'][word_index][1]
+                        c_word_start = alternative['timestamps'][word_index][1]
+                        c_word_end = alternative['timestamps'][word_index][2]
+                        c_words.append([c_word, c_word_confidence, c_word_start, c_word_end])
+                        #transcript_txt.append(c_word)
+                        # print c_words
+                        index += 1
+                    word_list.append(c_words)
+                    transcripts.append(transcript)
+            self.process_utterances(word_list, transcripts)
+
+        if "speaker_labels" in data:
+            transcript = data['results'][0]['alternatives'][0]['transcript']
+            speaker_labels = data['speaker_labels']
+            for label in speaker_labels:
+                # storing the word, confidence, start time and stop time
+                c_speaker_conf = label['confidence']
+                c_speaker = label['speaker']
+                c_speaker_start = label['to']
+                c_speaker_end = label['from']
+                speaker_list = [c_speaker, c_speaker_conf, c_speaker_start, c_speaker_end]
+            self.speaker_data.append([transcript, speaker_list])
+
+            if len(self.data_to_store[-1]) == 7:
+                self.data_to_store[-1]+=[transcript, speaker_list]
+                #print "Printed"
+                print "\t".join(str(a) for a in self.data_to_store[-1])
+            
+            
         #print word_list
 
         
@@ -329,13 +352,15 @@ class Audio_Handler(object):
             c_transcript = transcripts[utterance_index]
             hgi_count, hgi_emot_dict = process_text(str(c_transcript), self.hgi_dictionary, self.hgi_emots)
             liwc_count, liwc_emot_dict = process_text(str(c_transcript),self.liwc_dictionary, self.liwc_emots)   
-            print hgi_emot_dict, liwc_emot_dict
             #get indices that might be useful for question detection
             quest_indices, inquiry_indices = check_question_words(c_transcript)
+            question_heuristic = 0 in quest_indices
+            self.data_to_store.append([c_transcript, direction, question_heuristic, hgi_emot_dict,hgi_count, liwc_emot_dict, liwc_count])#heuristic to check if question index is at the first spot
     
     def process_direction(self, c_utterance, c_chunk_data, prev_chunk):
         c_utterance_frames = ""
         utterance_start_time = None
+        directions=[]
         for c_word in c_utterance:
             #should have a confidence threshold
             #print c_word[0], c_word[2], c_word[3]
@@ -371,9 +396,11 @@ class Audio_Handler(object):
             subset_frames = c_frames[adjusted_start:adjusted_end]
             
             direction = get_direction_helper(subset_frames, self.CHANNELS)
+            directions.append(direction)
         utterance_end_time = utterance_start_time + len(c_utterance_frames)/self.RATE
 
-        return direction, utterance_end_time, c_chunk_data, prev_chunk
+        return directions, utterance_end_time, c_chunk_data, prev_chunk
+    
     def write_audio_to_file(data, file_name):
         if data is not None:
             # filename = self.convert_time(time_recorded)
