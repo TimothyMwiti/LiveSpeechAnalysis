@@ -121,7 +121,7 @@ class Audio_Handler(object):
 
 	def pass_audio_to_socket(self):
 		self.audio_stream.start_stream()
-		print ("*recording started")
+		print ("recording started...")
 		self.recording_audio = True
 		threading.Thread(target=self.write_to_file).start()
 
@@ -230,7 +230,6 @@ class Audio_Handler(object):
 	def process_speech_result(self,data, start=0.0, end=0.0):
 		speech_result = data['results'][0]
 		speaker_labels = data['speaker_labels']
-		word_list=[]
 		transcripts = []
 		speaker_list = []
 		c_words = []
@@ -242,8 +241,6 @@ class Audio_Handler(object):
 			c_word_start = alternative['timestamps'][i][1]
 			c_word_end = alternative['timestamps'][i][2]
 			c_words.append([c_word, c_word_confidence, c_word_start, c_word_end])
-
-		#word_list.append(c_words)
 		transcripts.append(transcript)
 		self.process_utterances(c_words, transcripts)
 		print('done with speech resultts')
@@ -255,8 +252,6 @@ class Audio_Handler(object):
 			speaker_list = [c_speaker, c_speaker_conf, c_speaker_start, c_speaker_end]
 		self.speaker_data.append([transcript, speaker_list])
 
-		# if len(self.data_to_store[-1]) == 7:
-		# 	self.data_to_store[-1]+=[transcript, speaker_list]
 		print('speaker data ', self.speaker_data)
 		return c_words, transcripts
 
@@ -265,7 +260,12 @@ class Audio_Handler(object):
 		prev_chunk = ""
 		for utterance_index in range(len(word_list)):
 			c_utterance = word_list[utterance_index]
-			# direction, utterance_end_time, c_chunk_data, prev_chunk = self.process_direction(c_utterance, c_chunk_data, prev_chunk)
+			print(c_utterance)
+			# ['run', 0.323, 0.52, 0.83]
+			# RUNS FILE UNTIL HERE, EVALUATE CALL TO PROCESS DIRECTION
+			direction, utterance_end_time, c_chunk_data, prev_chunk = self.process_direction(c_utterance, c_chunk_data, prev_chunk)
+
+
 			c_transcript = transcripts[0]
 			hgi_count, hgi_emot_dict = process_text(str(c_transcript), self.hgi_dictionary, self.hgi_emots)
 			liwc_count, liwc_emot_dict = process_text(str(c_transcript),self.liwc_dictionary, self.liwc_emots)
@@ -274,39 +274,44 @@ class Audio_Handler(object):
 			#self.data_to_store.append([c_transcript, direction, question_heuristic, hgi_emot_dict,hgi_count, liwc_emot_dict, liwc_count])#heuristic to check if question index is at the first spot
 
 	def process_direction(self, c_utterance, c_chunk_data, prev_chunk):
-		c_utterance_frames = ""
+		c_utterance_frames = bytearray() #BYTE ARRAY, PREVIOUS CODE HAD INITIALIZED AS STRING, THAT PRODUCED AN ERROR
 		utterance_start_time = None
 		directions=[]
-		for c_word in c_utterance:
 
-			frame_start, frame_end, chunk_index_start, chunk_index_end=time_to_chunk(c_word[2], c_word[3], self.RATE, self.CHUNK)
-			if utterance_start_time == None:
-				utterance_start_time = c_word[2]
-			c_frames = ""
-			if c_chunk_data['index'] > chunk_index_start:
-				print (" Got ahead of ourselves")
-			if c_chunk_data['index'] == chunk_index_start:
-				c_frames= c_chunk_data['data']
-			while c_chunk_data["index"] < chunk_index_end:
-				if self.DIRECTIONS_QUEUE:
-					[chunk_index, frames, time_stamp] = self.DIRECTIONS_QUEUE.popleft()
-					c_chunk_data = {"index":chunk_index, "data":frames}
-					c_utterance_frames+=frames
-					if chunk_index >= chunk_index_start:
-						c_frames+=frames
-					prev_chunk = frames
-				else:
-					break
-			mod_start_frame = (frame_start%self.CHUNK)-1
-			utterance_frame_duration = frame_end-frame_start
-			mod_end_frame = mod_start_frame+utterance_frame_duration
-			adjusted_start = mod_start_frame + int(0.3 * utterance_frame_duration)
-			adjusted_end = mod_end_frame - int(0.3 * utterance_frame_duration)
-			subset_frames = c_frames[adjusted_start:adjusted_end]
+		frame_start, frame_end, chunk_index_start, chunk_index_end=time_to_chunk(c_utterance[2], c_utterance[3], self.RATE, self.CHUNK)
+		print(frame_start, ' ', frame_end, ' ', chunk_index_start, ' ', chunk_index_end)
+		if utterance_start_time is None:
+			utterance_start_time = c_utterance[2]
+		c_frames = bytearray()
+		if c_chunk_data['index'] > chunk_index_start:
+			print('Got ahead of ourselves!')
+		if c_chunk_data['index'] == chunk_index_start:
+			c_frames = c_chunk_data['data']
+		print('almost done')
+		while c_chunk_data["index"] < chunk_index_end:
+			if self.DIRECTIONS_QUEUE:
+				[chunk_index, frames, time_stamp] = self.DIRECTIONS_QUEUE.popleft()
+				c_chunk_data = {"index":chunk_index, "data":frames}
+				for i in range(len(frames)):
+					c_utterance_frames.append(frames[i])
+				if chunk_index >= chunk_index_start:
+					for i in range(0, len(frames)):
+						c_frames.append(frames[i])
+				prev_chunk = frames
+			else:
+				break
+		print('processing directions queue')
+		mod_start_frame = (frame_start%self.CHUNK)-1
+		utterance_frame_duration = frame_end-frame_start
+		mod_end_frame = mod_start_frame+utterance_frame_duration
+		adjusted_start = mod_start_frame + int(0.3 * utterance_frame_duration)
+		adjusted_end = mod_end_frame - int(0.3 * utterance_frame_duration)
+		subset_frames = c_frames[adjusted_start:adjusted_end]
 
-			direction = self.get_direction_helper(subset_frames, self.CHANNELS)
-			directions.append(direction)
+		direction = self.get_direction_helper(subset_frames)
+		directions.append(direction)
 		utterance_end_time = utterance_start_time + len(c_utterance_frames)/self.RATE
+		print('done processing direction')
 
 		return directions, utterance_end_time, c_chunk_data, prev_chunk
 
@@ -350,24 +355,24 @@ class Audio_Handler(object):
 
 				best_guess = (-best_guess + 120) % 360
 		elif CHANNELS == 2:
-				pass
+				return 0
 		return best_guess
 
-	def get_direction_helper(self, sframes, CHANNELS=4):
-		if CHANNELS == 2:
-			return None
+	def get_direction_helper(self, sframes):
+		if self.CHANNELS == 2:
+			return 0
 		direction=None
 		frames = np.fromstring(sframes, dtype='int16')
 		padded_frames = np.pad(frames, (0,pad_audio(len(frames))), 'constant', constant_values=(0))
 
-		direction = self.get_direction(padded_frames, CHANNELS)
+		direction = self.get_direction(padded_frames, self.CHANNELS)
 		return direction
 
 def time_to_chunk(audio_start, audio_end, RATE, CHUNK):
 	frame_start = int(audio_start * RATE)
 	frame_end = int(audio_end * RATE)
-	chunk_index_start =   frame_start/CHUNK#seconds * frames /second * 1/ (frames/chunk)
-	chunk_index_end = frame_end/CHUNK #seconds * frames /second * 1/ (frames/chunk)
+	chunk_index_start =   int(frame_start/CHUNK)#seconds * frames /second * 1/ (frames/chunk)
+	chunk_index_end = int(frame_end/CHUNK) #seconds * frames /second * 1/ (frames/chunk)
 	return frame_start, frame_end, chunk_index_start, chunk_index_end
 
 def get_auth():
@@ -382,8 +387,6 @@ def parse_args():
 	parser = argparse.ArgumentParser(
 		description='Transcribe Watson text in real time')
 	parser.add_argument('-t', '--timeout', type=int, default=5)
-	# parser.add_argument('-d', '--device')
-	# parser.add_argument('-v', '--verbose', action='store_true')
 	args = parser.parse_args()
 	return args
 
