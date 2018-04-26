@@ -1,7 +1,5 @@
 import nltk
 from nltk.stem import PorterStemmer
-from nltk import wordpunct_tokenize
-#from nltk.corpus import *
 
 def listContains(l, word):
 	try:
@@ -24,7 +22,7 @@ def listContainsVariant(l, word):
 				return 1
 	return 0
 def populate_dictionary_index_hi():	
-	print "populating dictionary"
+	print("populating dictionary")
 	iq = open("inquirerbasicttabsclean.txt", 'r')
 	s=0
 	listofEmots=[]
@@ -51,8 +49,8 @@ def populate_dictionary_index_hi():
 	return listofEmots, hgi_dictionary
 
 def populate_dictionary_index_liwc():	
-	print "populating dictionary"
-	iq = open("LIWC2007dictionary poster marcelo.csv", 'r')
+	print("populating dictionary")
+	iq = open("LIWC2007dictionarypostermarcelo.csv", 'r')
 	s=0
 	listofEmots=[]
 	liwcDictionary={}
@@ -80,7 +78,7 @@ def populate_dictionary_index_liwc():
 	return listofEmots, liwcDictionary
 
 def write_to_file(output, listofEmots, wordCount, wordDictionary):
-	print "writing to file"
+	print("writing to file")
 	for word in listofEmots:
 		output.write(word + "\t")
 	output.write("\n")
@@ -92,7 +90,7 @@ def write_to_file(output, listofEmots, wordCount, wordDictionary):
 	output.write(str(wordCount)+'\n')
 
 def process_text(txt, hgi_dictionary, listofEmots, stemmer=PorterStemmer()):
-	print "processing text"
+	print("processing text")
 	wordDictionary = {}
 	#strstopwords = [str(w).lower() for w in stopwords.words('english')]
 
@@ -118,8 +116,8 @@ if __name__ == '__main__':
 	hgi_emots, hgi_dictionary = populate_dictionary_index_hi()
 	liwc_emots, liwc_dictionary = populate_dictionary_index_liwc()
 	for a in range(10):
-		r = raw_input("Input text\n")
+		r = input("Input text\n")
 		hgi_count, hgi_emot_dict = process_text(r, hgi_dictionary, hgi_emots)
 		liwc_count, liwc_emot_dict = process_text(r,liwc_dictionary, liwc_emots)
-		print hgi_count,liwc_count, hgi_emot_dict, liwc_emot_dict
+		print (hgi_count,liwc_count, hgi_emot_dict, liwc_emot_dict)
 	#output all of the counts to a file based on listofEmots

@@ -1,7 +1,5 @@
 import nltk
 from nltk.stem import PorterStemmer
-from nltk import wordpunct_tokenize
-#from nltk.corpus import *
 
 def listContains(l, word):
 	for item in l:
@@ -23,8 +21,8 @@ def listContainsVariant(l, word):
 				return 1
 	return 0
 def populate_dictionary_index():	
-	print "populating dictionary"
-	iq = open("LIWC2007dictionary poster marcelo.csv", 'r')
+	print("populating dictionary")
+	iq = open("LIWC2007dictionarypostermarcelo.csv", 'r')
 	s=0
 	listofEmots=[]
 	liwcDictionary={}
@@ -52,7 +50,7 @@ def populate_dictionary_index():
 	return listofEmots, liwcDictionary
 
 def write_to_file(output, listofEmots, wordCount, wordDictionary):
-	print "writing to file"
+	print("writing to file")
 	for word in listofEmots:
 		output.write(word + "\t")
 	output.write("\n")
@@ -64,7 +62,7 @@ def write_to_file(output, listofEmots, wordCount, wordDictionary):
 	output.write(str(wordCount)+'\n')
 
 def process_text(txt, liwcDictionary, listofEmots, stemmer=PorterStemmer()):
-	print "processing text"
+	print ("processing text")
 	wordDictionary = {}
 	#strstopwords = [str(w).lower() for w in stopwords.words('english')]
 
@@ -89,7 +87,7 @@ def process_text(txt, liwcDictionary, listofEmots, stemmer=PorterStemmer()):
 if __name__ == '__main__':
 	emots, liwcDictionary = populate_dictionary_index()
 	for a in range(10):
-		r = raw_input("Input text\n")
+		r = input("Input text\n")
 		count, emot_dict = process_text(r, liwcDictionary, emots)
-		print count, emot_dict
+		print(count, emot_dict)
 	#output all of the counts to a file based on listofEmots

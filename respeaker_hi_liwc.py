@@ -1,7 +1,6 @@
 import nltk
 from nltk.stem import PorterStemmer
-from nltk import wordpunct_tokenize
-#from nltk.corpus import *
+import codecs
 
 def listContains(l, word):
 	try:
@@ -9,6 +8,19 @@ def listContains(l, word):
 	except ValueError:
 		return 0
 	return 1
+
+def open_file(filename):
+	path = filename
+	file = open(path, 'r+', encoding='utf-8')
+	while True:
+		lines = file.readlines()
+		if not lines:
+			break
+		for line in lines:
+			print(line)
+
+#open_file('inquirerbasicttabsclean.txt')
+#print('done', '\n\n\n\n\n\n\n\n\n\n\n\n\n\n')
 
 def listContainsVariant(l, word):
 	for item in l:
@@ -25,7 +37,7 @@ def listContainsVariant(l, word):
 	return 0
 def populate_dictionary_index_hi():	
 	#print "populating dictionary"
-	iq = open("inquirerbasicttabsclean.txt", 'r')
+	iq = open("inquirerbasicttabsclean.txt", 'r', encoding='ascii')
 	s=0
 	listofEmots=[]
 	hgi_dictionary={}
@@ -38,7 +50,7 @@ def populate_dictionary_index_hi():
 				if len(words) > item:
 					if words[item] != '':
 						cList =[]
-						if hgi_dictionary.has_key(listofEmots[item]):
+						if listofEmots[item] in hgi_dictionary:
 							cList = hgi_dictionary[listofEmots[item]]
 						if (listContains(cList,baseword)==0):
 							cList.append(baseword)
@@ -52,7 +64,7 @@ def populate_dictionary_index_hi():
 
 def populate_dictionary_index_liwc():	
 	#print "populating dictionary"
-	iq = open("LIWC2007dictionary poster marcelo.csv", 'r')
+	iq = open("LIWC2007dictionarypostermarcelo.csv", 'r', encoding='latin-1')
 	s=0
 	listofEmots=[]
 	liwcDictionary={}
@@ -64,7 +76,7 @@ def populate_dictionary_index_liwc():
 					word = words[item].lower().strip()
 					if word!= "":
 						cList = []
-						if liwcDictionary.has_key(listofEmots[item]):
+						if listofEmots[item] in liwcDictionary:
 							cList = liwcDictionary[listofEmots[item]]
 						if (listContains(cList,word)==0):
 							cList.append(word)
@@ -80,7 +92,7 @@ def populate_dictionary_index_liwc():
 	return listofEmots, liwcDictionary
 
 def write_to_file(output, listofEmots, wordCount, wordDictionary):
-	print "writing to file"
+	print ("writing to file")
 	for word in listofEmots:
 		output.write(word + "\t")
 	output.write("\n")
@@ -108,18 +120,18 @@ def process_text(txt, hgi_dictionary, listofEmots, stemmer=PorterStemmer()):
 			if emot!='Entry':
 				if (listContains(hgi_dictionary[emot], cWord)==1):
 					emotCount = 0
-					if (wordDictionary.has_key(emot)):
+					if (emot in wordDictionary):
 						emotCount = wordDictionary[emot]
 					emotCount = emotCount +1
 					wordDictionary[emot]=emotCount
 		wordCount = wordCount + 1
 	return wordCount, wordDictionary
+
 if __name__ == '__main__':
 	hgi_emots, hgi_dictionary = populate_dictionary_index_hi()
 	liwc_emots, liwc_dictionary = populate_dictionary_index_liwc()
 	for a in range(10):
-		r = raw_input("Input text\n")
+		r = input("Input text\n")
 		hgi_count, hgi_emot_dict = process_text(r, hgi_dictionary, hgi_emots)
 		liwc_count, liwc_emot_dict = process_text(r,liwc_dictionary, liwc_emots)
-		print hgi_count,liwc_count, hgi_emot_dict, liwc_emot_dict
-	#output all of the counts to a file based on listofEmots
+		print (hgi_count,liwc_count, hgi_emot_dict, liwc_emot_dict)
