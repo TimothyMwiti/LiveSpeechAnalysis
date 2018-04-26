@@ -257,6 +257,7 @@ class Audio_Handler(object):
 
 		# if len(self.data_to_store[-1]) == 7:
 		# 	self.data_to_store[-1]+=[transcript, speaker_list]
+		print('speaker data ', self.speaker_data)
 		return c_words, transcripts
 
 	def process_utterances(self, word_list, transcripts):
@@ -264,9 +265,8 @@ class Audio_Handler(object):
 		prev_chunk = ""
 		for utterance_index in range(len(word_list)):
 			c_utterance = word_list[utterance_index]
-			direction, utterance_end_time, c_chunk_data, prev_chunk = self.process_direction(c_utterance, c_chunk_data, prev_chunk)
+			# direction, utterance_end_time, c_chunk_data, prev_chunk = self.process_direction(c_utterance, c_chunk_data, prev_chunk)
 			c_transcript = transcripts[0]
-			print('got here')
 			hgi_count, hgi_emot_dict = process_text(str(c_transcript), self.hgi_dictionary, self.hgi_emots)
 			liwc_count, liwc_emot_dict = process_text(str(c_transcript),self.liwc_dictionary, self.liwc_emots)
 			quest_indices, inquiry_indices = check_question_words(c_transcript)
