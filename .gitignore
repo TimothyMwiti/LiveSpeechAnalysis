@@ -5,3 +5,5 @@ output/
 *.mp3
 *.wav
 *.cfg
+recordings/
+audio_output/
